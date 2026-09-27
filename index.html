@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STRONG LIFE | Kütahya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        strong: {
+                            yellow: '#FACC15',
+                            dark: '#0a0a0a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        html, body { 
+            scroll-behavior: smooth; 
+            overflow-x: hidden; 
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            position: relative;
+        }
+
+        body { font-family: 'Montserrat', sans-serif; background-color: #0a0a0a; color: white; }
+        h1, h2, h3 { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+        
+        .video-container {
+            width: 100%; max-width: 320px; aspect-ratio: 9 / 16;
+            background: #000; border: 4px solid #FACC15;
+            box-shadow: 0 0 40px rgba(250, 204, 21, 0.4);
+            border-radius: 20px; overflow: hidden; position: relative;
+        }
+
+        .stripe-bg {
+            background: repeating-linear-gradient(45deg, #FACC15, #FACC15 15px, #000 15px, #000 30px);
+        }
+
+        .team-card { transition: transform 0.3s ease; }
+        .team-card:hover { transform: translateY(-10px); }
+        .team-card:hover img { filter: grayscale(0); transform: scale(1.05); }
+        .team-card img { transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); filter: grayscale(100%); }
+
+        section { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 100px 20px; position: relative; width: 100%; box-sizing: border-box; }
+        
+        .contact-card { 
+            background: linear-gradient(145deg, #111, #050505); 
+            transition: all 0.3s ease;
+        }
+        .contact-card:hover { border-color: #FACC15; transform: scale(1.02); }
+    </style>
+</head>
+<body>
+
+    <div class="fixed top-0 left-0 w-full h-1 stripe-bg z-[70]"></div>
+
+    <nav class="fixed top-1 left-0 z-50 bg-black/95 border-b-2 border-strong-yellow py-3 px-4 md:px-0 w-full">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="text-xl md:text-3xl font-black italic tracking-tighter shrink-0">
+                STRONG <span class="text-strong-yellow text-2xl md:text-4xl">LIFE</span>
+            </div>
+            <div class="flex gap-4 md:gap-8 font-bold text-[10px] md:text-sm uppercase tracking-widest shrink-0">
+                <a href="#hero" class="hover:text-strong-yellow transition-colors duration-300">ANA SAYFA</a>
+                <a href="#ekibimiz" class="hover:text-strong-yellow transition-colors duration-300">EKİBİMİZ</a>
+                <a href="#iletisim" class="hover:text-strong-yellow transition-colors duration-300">İLETİŞİM</a>
+            </div>
+        </div>
+    </nav>
+
+    <section id="hero" class="pt-32 lg:pt-20">
+        <div class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            
+            <div class="flex flex-col items-center lg:items-start space-y-6 text-center lg:text-left">
+                <h1 class="text-6xl md:text-8xl font-black leading-tight italic drop-shadow-lg">
+                    GÜCÜNÜ <br><span class="text-strong-yellow uppercase">Keşfet</span>
+                </h1>
+                
+                <div class="video-container mx-auto lg:mx-0 group">
+                    <video id="randomVideo" class="w-full h-full object-cover" controls autoplay muted loop playsinline>
+                        <source src="" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900/90 backdrop-blur-lg p-8 md:p-12 border-l-4 md:border-l-8 border-strong-yellow shadow-2xl relative rounded-r-xl">
+                <h2 class="text-2xl md:text-3xl font-bold mb-8 italic tracking-widest underline decoration-strong-yellow underline-offset-8 uppercase">Hemen Bize Katıl</h2>
+                
+                <form id="gymForm" class="space-y-5">
+                    <input type="text" id="name" placeholder="Ad Soyad" class="w-full p-4 bg-black border border-zinc-800 rounded focus:border-strong-yellow outline-none text-sm transition-all">
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="number" id="age" placeholder="Yaş" class="w-full p-4 bg-black border border-zinc-800 rounded focus:border-strong-yellow outline-none text-sm">
+                        <select id="sex" class="w-full p-4 bg-black border border-zinc-800 rounded outline-none text-zinc-400 text-sm focus:border-strong-yellow">
+                            <option value="" disabled selected>Cinsiyet</option>
+                            <option value="Erkek">Erkek</option>
+                            <option value="Kadın">Kadın</option>
+                        </select>
+                    </div>
+
+                    <select id="duration" class="w-full p-4 bg-black border border-zinc-800 rounded outline-none text-zinc-400 text-sm focus:border-strong-yellow">
+                        <option value="" disabled selected>Üyelik Paketi</option>
+                        <option value="1 Ay">1 Aylık</option>
+                        <option value="3 Ay">3 Aylık</option>
+                        <option value="6 Ay">6 Aylık</option>
+                        <option value="12 Ay">12 Aylık</option>
+                    </select>
+
+                    <select id="service" class="w-full p-4 bg-black border border-zinc-800 rounded outline-none text-zinc-400 text-sm focus:border-strong-yellow">
+                        <option value="" disabled selected>Branş Seçimi</option>
+                        <option value="Fitness">Fitness</option>
+                        <option value="Boxing">Boxing</option>
+                        <option value="Yoga">Yoga</option>
+                        <option value="Private PT">Private PT</option>
+                    </select>
+
+                    <button type="button" onclick="sendWhatsApp()" class="w-full bg-strong-yellow text-black font-black py-4 rounded hover:bg-white transition-all uppercase text-lg shadow-lg">
+                        BAŞVURUYU TAMAMLA
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section id="ekibimiz" class="bg-zinc-900/40">
+        <div class="max-w-7xl mx-auto w-full">
+            <h2 class="text-4xl md:text-5xl font-bold italic mb-16 text-center lg:text-left tracking-tighter underline decoration-strong-yellow underline-offset-8">KADROMUZ</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div class="team-card group bg-black border-b-4 border-strong-yellow rounded-xl overflow-hidden shadow-2xl">
+                    <div class="h-[400px] md:h-[450px] overflow-hidden relative">
+                        <img src="pt1.jpg" alt="Musa Osmanoğlu" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+                            <h3 class="text-2xl font-bold uppercase tracking-tight">Musa Osmanoğlu</h3>
+                            <p class="text-strong-yellow text-sm font-bold uppercase tracking-widest italic">Boks Antrenörü</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="team-card group bg-black border-b-4 border-strong-yellow rounded-xl overflow-hidden shadow-2xl">
+                    <div class="h-[400px] md:h-[450px] overflow-hidden relative">
+                        <img src="pt2.jpg" alt="Zekeriya Osmanoğlu" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+                            <h3 class="text-2xl font-bold uppercase tracking-tight">Zekeriya Osmanoğlu</h3>
+                            <p class="text-strong-yellow text-sm font-bold uppercase tracking-widest italic">Bodybuilder / Pro Trainer</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="team-card group bg-black border-b-4 border-strong-yellow rounded-xl overflow-hidden shadow-2xl">
+                    <div class="h-[400px] md:h-[450px] overflow-hidden relative">
+                        <img src="pt3.jpg" alt="Nevzat Osmanoğlu" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+                            <h3 class="text-2xl font-bold uppercase tracking-tight">Nevzat Osmanoğlu</h3>
+                            <p class="text-strong-yellow text-sm font-bold uppercase tracking-widest italic">Bodybuilder / Fitness Expert</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="iletisim" class="bg-black">
+        <div class="max-w-7xl mx-auto w-full">
+            <div class="grid lg:grid-cols-2 gap-16 items-start">
+                <div class="space-y-12">
+                    <h2 class="text-5xl font-black italic mb-4 tracking-tighter">Bize <span class="text-strong-yellow">Ulaş</span></h2>
+                    <div class="grid gap-6">
+                        <div class="contact-card p-6 rounded-lg border-l-4 border-strong-yellow flex gap-6 items-center">
+                            <i class="fa-solid fa-map-location-dot text-strong-yellow text-3xl"></i>
+                            <p class="text-base italic leading-snug">Meydan, Mithatpaşa Cd No: 106, 43030 Kütahya Merkez/Kütahya</p>
+                        </div>
+                        <div class="contact-card p-6 rounded-lg border-l-4 border-strong-yellow flex gap-6 items-center">
+                            <i class="fa-solid fa-phone-volume text-strong-yellow text-3xl"></i>
+                            <p class="text-xl font-bold tracking-wider">0530 000 00 00</p>
+                        </div>
+                        <div class="contact-card p-6 rounded-lg border-l-4 border-strong-yellow flex gap-6 items-center">
+                            <i class="fa-brands fa-instagram text-strong-yellow text-3xl"></i>
+                            <a href="https://instagram.com/stronglife.gymcenter" target="_blank" class="text-lg font-bold hover:text-strong-yellow transition">@stronglife.gymcenter</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="h-[400px] md:h-[500px] w-full border-2 border-zinc-800 rounded-2xl overflow-hidden shadow-2xl relative">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3083.744154944122!2d29.9774659!3d39.418728!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14c947ff7647895d%3A0xc4874019318a6e84!2zTWV5ZGFuLCBNaXRoYXRwYcWfYSBDZC4gTm86IDEwNiwgNDMwMzAgS8O8dGFoeWEgTWVya2V6L0vDvHRhaHlh!5e0!3m2!1str!2str!4v1713388000000" 
+                        width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy">
+                    </iframe>
+                    <div class="absolute bottom-0 left-0 w-full h-4 stripe-bg"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-black pt-20 pb-10 border-t-8 border-strong-yellow text-center">
+        <div class="text-4xl font-black italic mb-4 uppercase">STRONG <span class="text-strong-yellow">LIFE</span></div>
+        <div class="flex justify-center gap-8 mb-8">
+            <a href="https://instagram.com/stronglife.gymcenter" target="_blank" class="text-zinc-400 hover:text-strong-yellow transition text-3xl"><i class="fa-brands fa-instagram"></i></a>
+            <a href="https://wa.me/905511911693" class="text-zinc-400 hover:text-strong-yellow transition text-3xl"><i class="fa-brands fa-whatsapp"></i></a>
+        </div>
+        <p class="text-[10px] text-zinc-800 tracking-widest uppercase italic font-bold">© 2026 OSMANOĞLU GYM & FITNESS | KÜTAHYA</p>
+    </footer>
+
+    <script>
+        window.onload = function() {
+            const videos = ['vid1.mp4', 'vid2.mp4', 'vid3.mp4', 'vid4.mp4'];
+            const randomVid = videos[Math.floor(Math.random() * videos.length)];
+            const videoElement = document.getElementById('randomVideo');
+            if(videoElement) {
+                const source = videoElement.querySelector('source');
+                source.src = randomVid;
+                videoElement.load();
+            }
+        };
+
+        function sendWhatsApp() {
+            const name = document.getElementById('name').value;
+            const age = document.getElementById('age').value;
+            const sex = document.getElementById('sex').value;
+            const duration = document.getElementById('duration').value;
+            const service = document.getElementById('service').value;
+
+            if(!name || !age || !sex || !duration || !service) {
+                alert("Lütfen formdaki tüm alanları doldurunuz.");
+                return;
+            }
+
+            const message = `Merhaba Strong Life! Yeni üyelik başvurusu:%0A👤 İsim: ${name}%0A🎂 Yaş: ${age}%0A🚻 Cinsiyet: ${sex}%0A📅 Paket: ${duration}%0A🥊 Branş: ${service}`;
+            window.open(`https://wa.me/905300000000?text=${message}`, '_blank');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Prag Gezi Rehberi 2026</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Firebase App & Database -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #090d16; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    
+    /* Map Pins */
+    .pin-marker {
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 50%; border: 2px solid #ffffff;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.75); color: #ffffff;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .pin-marker:active, .pin-marker:hover { transform: scale(1.15); box-shadow: 0 0 20px rgba(255, 255, 255, 0.4); }
+    
+    .pin-blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-color: #93c5fd; }
+    .pin-green { background: linear-gradient(135deg, #10b981, #047857); }
+    .pin-yellow { background: linear-gradient(135deg, #f59e0b, #b45309); }
+    .pin-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+
+    /* Custom Popups */
+    .leaflet-popup-content-wrapper {
+      background: #0f172a !important; color: #f8fafc !important;
+      border: 1px solid #334155 !important; border-radius: 16px !important;
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.95) !important;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .leaflet-popup-tip { background: #0f172a !important; }
+    .leaflet-popup-content { margin: 14px !important; }
+    .leaflet-container a.leaflet-popup-close-button { color: #94a3b8 !important; padding: 12px 12px 0 0 !important; }
+
+    /* Kalıcı Mesafe Etiketleri İçin Style */
+    .custom-circle-label {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    .label-content {
+      transform: translateX(-50%);
+    }
+
+    @keyframes highlightPulse {
+      0% { border-color: #1e293b; }
+      50% { box-shadow: 0 0 35px rgba(56, 189, 248, 0.5); border-color: #38bdf8; transform: translateY(-4px); }
+      100% { border-color: #1e293b; transform: translateY(0); }
+    }
+    .flash-active { animation: highlightPulse 2s ease-out; }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-hidden select-none">
+
+  <!-- ADMIN MODAL -->
+  <div id="adminModal" class="hidden fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 transition-opacity">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg sm:text-2xl font-extrabold text-sky-400 flex items-center gap-2">
+          <i data-lucide="shield-alert" class="w-6 h-6"></i> Gelen Mesajlar (Admin Log)
+        </h2>
+        <button onclick="closeAdminMode()" class="text-slate-400 hover:text-white transition p-2 bg-slate-800 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="adminLogContent" class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2"></div>
+      <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
+        <span class="text-xs text-slate-500 font-mono" id="logCountText">0 mesaj</span>
+        <button onclick="clearFurkanLogs()" class="bg-red-900/40 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white text-xs font-bold px-4 py-2 rounded-lg transition">Temizle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FURKAN'A YAZ MODAL -->
+  <div id="furkanModal" class="hidden fixed inset-0 z-[9000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+      <h3 class="text-lg font-bold text-white mb-2">Furkan'a Mesaj Gönder</h3>
+      <p class="text-xs text-slate-400 mb-4">Bu mesaj doğrudan admin ekranına loglanacaktır.</p>
+      
+      <input type="text" id="furkanSenderName" placeholder="İsminiz (Kimden?)" class="w-full bg-slate-950 text-white text-base sm:text-sm p-3.5 sm:p-3 rounded-xl border border-slate-700 mb-3 outline-none focus:border-sky-500">
+      <textarea id="furkanMessageText" rows="3" placeholder="Mesajınızı yazın..." class="w-full bg-slate-950 text-white text-base sm:text-sm p-3.5 sm:p-3 rounded-xl border border-slate-700 mb-4 outline-none focus:border-sky-500 resize-none"></textarea>
+      
+      <div class="flex gap-3">
+        <button onclick="closeFurkanModal()" class="flex-1 bg-slate-800 text-slate-300 py-3 rounded-xl text-sm font-bold hover:bg-slate-700 transition">İptal</button>
+        <button onclick="sendFurkanMessage()" class="flex-1 bg-sky-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-sky-500 transition shadow-lg shadow-sky-900/50">Gönder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-6 py-3 flex items-center justify-between z-[500] shrink-0">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <div class="bg-gradient-to-tr from-sky-500 to-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-sky-500/20 shrink-0">
+        <i data-lucide="map" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+      </div>
+      <div>
+        <h1 class="text-sm sm:text-lg font-extrabold tracking-tight text-white leading-tight">Prag Rotası</h1>
+        <p class="text-[9px] sm:text-[11px] text-slate-400 font-medium">Hotel Liberty Başlangıçlı</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-bold shadow-inner">
+      <button onclick="switchView('map')" id="btnViewMap" class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg bg-sky-600 text-white transition"><i data-lucide="map-pin" class="w-4 h-4"></i><span class="hidden xs:inline">Harita</span></button>
+      <button onclick="switchView('list')" id="btnViewList" class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-slate-400 hover:text-white transition"><i data-lucide="list-ordered" class="w-4 h-4"></i><span class="hidden xs:inline">Liste</span></button>
+    </div>
+  </header>
+
+  <!-- MAP VIEW -->
+  <div id="viewMap" class="flex-1 relative w-full h-full bg-slate-950 flex">
+    
+    <!-- MINIMIZED FILTER BUTTON -->
+    <button id="btnFilterMinimize" onclick="toggleFilterPanel(true)" class="absolute top-4 left-4 z-[400] bg-slate-900/95 p-3 rounded-xl border border-slate-700 shadow-2xl backdrop-blur-md text-slate-300 hover:text-white transition flex items-center gap-2">
+      <i data-lucide="filter" class="w-4 h-4"></i>
+      <span class="text-xs font-bold hidden sm:inline">Filtreler</span>
+    </button>
+
+    <!-- EXPANDED CONTROLS PANEL -->
+    <div id="filterPanel" onclick="event.stopPropagation()" class="hidden absolute top-4 left-4 right-4 sm:right-auto sm:w-[280px] z-[400] bg-slate-900/95 p-4 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md">
+      <div class="flex items-center justify-between mb-3">
+        <label class="text-[10px] sm:text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+          <i data-lucide="filter" class="w-3.5 h-3.5"></i> Pin Filtresi
+        </label>
+        <button onclick="toggleFilterPanel(false)" class="text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-lg transition"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+      </div>
+      
+      <select id="pinFilter" onchange="renderMapAndList()" class="bg-slate-950 text-slate-200 text-base sm:text-xs font-semibold p-3 sm:p-2.5 rounded-xl border border-slate-800 outline-none focus:border-sky-500 w-full transition cursor-pointer mb-3">
+        <option value="all">🌍 Tüm Noktalar</option>
+        <option value="green">🟢 Kesinlikle Görülmeli (Yeşil)</option>
+        <option value="yellow">🟡 Görsek Fena Olmaz (Sarı)</option>
+        <option value="red">🔴 Yakınsak Uğranır (Kırmızı)</option>
+      </select>
+
+      <div class="border-t border-slate-800 pt-3">
+        <label class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-slate-300 cursor-pointer hover:text-white transition py-1">
+          <input type="checkbox" id="walkCheck" onchange="toggleOverlays()" class="w-4 h-4 rounded border-slate-700 bg-slate-950 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900">
+          🚶‍♂️ Yürüme Mesafesi Göster
+        </label>
+      </div>
+    </div>
+
+    <!-- Furkan'a Yaz Button (Sol Alt) -->
+    <button onclick="openFurkanModal()" class="absolute bottom-5 left-4 z-[400] bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-2xl border border-sky-400/50 shadow-xl shadow-sky-900/50 backdrop-blur-md flex items-center gap-2 transition-all active:scale-95">
+      <i data-lucide="message-square-plus" class="w-4 h-4 sm:w-5 sm:h-5"></i> Furkan'a Yaz
+    </button>
+
+    <!-- Info Toast -->
+    <div id="toast" class="absolute top-4 right-4 z-[500] bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none">
+      ✓ Buluta Kaydedildi!
+    </div>
+
+    <div id="mapCanvas" class="w-full h-full z-10"></div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="viewList" class="hidden flex-1 bg-slate-950 overflow-y-auto custom-scrollbar p-4 sm:p-8 relative">
+    <div class="max-w-4xl mx-auto space-y-6 pb-12" id="listContentContainer"></div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       🟢 FIREBASE BULUT SENKRONİZASYONU KURULUMU
+       ========================================================================= */
+    const firebaseConfig = {
+      apiKey: "AIzaSyCmbQtucKTc6JXE4AIBjOTy6oswcG3Sgd8",
+      authDomain: "geziprag-5d4b4.firebaseapp.com",
+      databaseURL: "https://geziprag-5d4b4-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "geziprag-5d4b4",
+      storageBucket: "geziprag-5d4b4.firebasestorage.app",
+      messagingSenderId: "93263316388",
+      appId: "1:93263316388:web:d0dd0403a1bb689787ad31",
+      measurementId: "G-Y9F1VBRTMN"
+    };
+
+    let useCloud = false;
+    let db;
+    if (firebaseConfig.apiKey) {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+      useCloud = true;
+    }
+
+    let appData = { colors: {}, notes: {}, furkanLogs: [] };
+
+    // --- INIT DATA ---
+    function initData() {
+      if (useCloud) {
+        db.ref('pragApp').on('value', (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            appData.colors = data.colors || {};
+            appData.notes = data.notes || {};
+            appData.furkanLogs = data.furkanLogs || [];
+          } else {
+            appData.colors = {};
+            appData.notes = {};
+            appData.furkanLogs = [];
+          }
+          renderMapAndList();
+        }, (error) => {
+          console.error("Firebase yetki hatası veya bağlantı sorunu:", error);
+          renderMapAndList();
+        });
+      } else {
+        const local = JSON.parse(localStorage.getItem('pragAppData'));
+        if (local) appData = local;
+        renderMapAndList();
+      }
+    }
+
+    function syncDataToStorage() {
+      if (useCloud) {
+        db.ref('pragApp').set(appData);
+      } else {
+        localStorage.setItem('pragAppData', JSON.stringify(appData));
+      }
+      showToast();
+      renderMapAndList();
+    }
+
+    // Tam Gerçek Koordinatlı Veri Seti
+    const rawLocations = [
+      { id: "liberty", title: "Hotel Liberty (Başlangıç Noktası)", defaultColor: "blue", icon: "hotel", lat: 50.083556, lng: 14.423048, 
+        desc: "Prag gezinizin başlangıç noktası olan Hotel Liberty, şehrin kalbinde, Wenceslas Meydanı ile Eski Şehir arasındaki stratejik konumuyla mükemmel bir üs görevi görüyor. Tarihi bir binada yer alan bu otel, Prag'ın gotik ve barok dokusunu modern bir konforla birleştirerek ziyaretçilerine eşsiz bir deneyim sunar. Sabahları otelden dışarı adım attığınız anda, arnavut kaldırımlı sokakların ritmine kapılacak ve şehrin mistik atmosferini içinize çekeceksiniz. Yürüme mesafesinde bulunan yüzlerce yıllık kafeler, gizli avlular ve muazzam mimari eserler, gezinizin her anını dolu dolu yaşamanızı sağlayacak. Otelin lobisinde kahvenizi yudumlarken, arkadaşlarınızla günün rotasını planlayabilir, haritada işaretlediğimiz kırmızı, sarı ve yeşil noktalara doğru yola çıkmadan önce enerjinizi toplayabilirsiniz. Burası sadece bir konaklama yeri değil, aynı zamanda Franz Kafka'nın yürüdüğü yolları arşınlamak, Vltava Nehri'nin kıyısında kaybolmak ve Prag'ın altın çağlarına doğru bir zaman yolculuğuna çıkmak için atılan ilk adımdır. Gece yorgun argın döndüğünüzde ise, güvenli ve lüks odalarınızda dinlenip bir sonraki günün maceralarına hazırlanacaksınız. Tüm bu özellikleri, Liberty'yi sadece bir otel olmaktan çıkarıp, bu efsanevi Çekya maceranızın en huzurlu ve merkezi yuvası haline getiriyor." 
+      },
+      { id: "oldtown", title: "Old Town Square & Astronomik Saat", defaultColor: "green", icon: "clock", lat: 50.086971, lng: 14.420703, 
+        desc: "Prag'ın kalbi sayılan Eski Şehir Meydanı (Old Town Square), 12. yüzyıldan beri şehrin ana toplanma noktasıdır. Meydana adım attığınız an, etrafınızı saran gotik, rönesans ve barok binaların ihtişamıyla kendinizi adeta bir açık hava müzesinde bulacaksınız. Meydanın en büyük yıldızı şüphesiz 1410 yılında inşa edilen Astronomik Saat'tir. Dünyanın halen çalışan en eski üçüncü astronomik saati olan bu muazzam eser, sadece saati değil, güneşin ve ayın gökyüzündeki konumunu, burçları ve evrenin o dönemki algılanış biçimini gösterir. Her saat başı gerçekleşen ve 12 havarinin geçit törenini andıran o kısa ama büyüleyici animasyon, etrafında toplanan yüzlerce turisti kendine hayran bırakır. Meydanın hemen ortasında yer alan Jan Hus anıtı ise, Çek halkının dini özgürlük ve bağımsızlık mücadelesinin bir sembolü olarak yükselir. Özellikle akşam saatlerinde, sokak lambalarının o loş ve sıcak ışığı altında meydanda yürümek, at arabalarının tıkırtıları eşliğinde sıcak şarabınızı veya trdelník tatlınızı yudumlamak Prag gezinizin en romantik deneyimlerinden biri olacaktır. Bu meydan, Prag'ın tarihine açılan en görkemli kapıdır." 
+      },
+      { id: "tyn_klem", title: "Týn Kilisesi & Klementinum", defaultColor: "green", icon: "church", lat: 50.087700, lng: 14.422700, 
+        desc: "Gotik mimarinin en çarpıcı örneklerinden biri olan Týn Kilisesi, 80 metre yüksekliğindeki masalsı, siyah kuleleriyle Eski Şehir Meydanı'nın silüetine dramatik bir damga vurur. Walt Disney'in Uyuyan Güzel şatosuna ilham verdiği söylenen bu kuleler, asimetrik yapılarıyla dikkat çeker; biri diğerinden biraz daha kalındır ve bu durum dönemin mimarisinde dünyanın eril ve dişil güçlerini temsil eder. Kilisenin içi, dışının o karanlık ve gotik yapısına tezat oluşturacak şekilde zengin barok süslemeler, devasa orglar ve ünlü Danimarkalı astronom Tycho Brahe'nin mezarı ile doludur. Hemen yakınında yer alan Klementinum ise, muazzam güzellikteki barok kütüphanesi ve Astronomi Kulesi ile göz kamaştırır. Dünyanın en güzel kütüphanelerinden biri olarak kabul edilen Klementinum Kütüphanesi'nin o loş, ahşap kokulu koridorlarında dolaşırken, fresklerle kaplı tavanın altında kendinizi bir Harry Potter film setindeymiş gibi hissedeceksiniz. Bu iki yapı, Prag'ın hem dini hem de bilimsel tarihinin en derin sırlarını barındırır ve ruhani bir keşif sunar." 
+      },
+      { id: "castle", title: "Prag Kalesi & Aziz Vitus Katedrali", defaultColor: "green", icon: "castle", lat: 50.090890, lng: 14.400500, 
+        desc: "Dünyanın en büyük antik kalesi unvanına sahip olan Prag Kalesi, şehre tepeden bakan devasa bir güç ve tarih sembolüdür. 9. yüzyılda inşasına başlanan bu kompleks, Bohemya krallarından Kutsal Roma imparatorlarına ve modern Çekya cumhurbaşkanlarına kadar pek çok liderin yönetim merkezi olmuştur. Kalenin kalbinde ise tüm ihtişamıyla Aziz Vitus Katedrali yükselir. İnşası tam 600 yıl süren bu gotik şaheser, vitray pencerelerinden süzülen renkli ışık hüzmeleri, göğe doğru uzanan ürkütücü gargoylları ve kralların taç giyme törenlerine ev sahipliği yapmış olan muazzam nefiyle nefes kesicidir. Katedralin içerisindeki Alfons Mucha tarafından tasarlanan vitray pencere ise Art Nouveau sanatının en güzel örneklerinden biridir. Kale kompleksi içerisinde yer alan ve simyacıların yaşayıp altın üretmeye çalıştıkları söylenen renkli minik evlerin bulunduğu Golden Lane (Altın Yol) ise, yazar Franz Kafka'nın da bir dönem kız kardeşiyle yaşadığı yer olmasıyla ünlüdür. Kale sokaklarında kaybolmak, Prag'ın o kadim ve asil ruhunu tam anlamıyla kavramak demektir." 
+      },
+      { id: "charles_bridge", title: "Karl Köprüsü (Charles Bridge)", defaultColor: "green", icon: "waves", lat: 50.086500, lng: 14.411400, 
+        desc: "Prag'ın en simgesel yapılarından biri olan Karl Köprüsü, Vltava Nehri üzerinde Eski Şehir ile Malá Strana'yı birbirine bağlayan tarihi bir şaheserdir. Kral IV. Karl tarafından 1357 yılında yapımına başlanan bu efsanevi taş köprü, yüzyıllar boyunca kralların, şövalyelerin ve tüccarların geçiş noktası olmuştur. Köprü boyunca sağlı sollu sıralanmış 30 farklı barok heykel, Hristiyan azizlerini ve tarihi figürleri tasvir eder; bunların en ünlüsü olan Aziz John of Nepomuk heykeline dokunmanın şans getirdiğine ve Prag'a tekrar döneceğinize inanılır. Özellikle sabahın çok erken saatlerinde, sis nehrin üzerine çöktüğünde köprüde yürümek, kendinizi bir ortaçağ masalının tam ortasında hissetmenizi sağlar. Sokak müzisyenleri, ressamlar ve el sanatları satan yerel sanatçılar, köprünün gün boyu yaşayan, dinamik ve sanatsal bir atmosfere sahip olmasını destekler. Gotik kuleleriyle iki uçtan korunan bu tarihi köprüden geçerken hem Prag Kalesi'nin muazzam manzarasını fotoğraflayabilir hem de şehrin o büyülü, romantik dokusunu iliklerinize kadar hissedebilirsiniz. Prag gezinizin en unutulmaz anılarından biri, kesinlikle bu köprüde atacağınız yavaş ve huzurlu adımlar olacaktır." 
+      },
+      { id: "lennon_wall", title: "John Lennon Wall & Čertovka Kanalı", defaultColor: "green", icon: "palette", lat: 50.086210, lng: 14.406830, 
+        desc: "Prag'ın komünist rejim altındaki karanlık dönemlerinde, gençlerin özgürlük, barış ve isyan çığlıklarını boyalarla haykırdığı John Lennon Duvarı, bugün şehrin en renkli ve dinamik noktalarından biridir. 1980'de John Lennon'ın öldürülmesinin ardından aniden onun portreleri ve Beatles şarkılarının sözleriyle dolan bu duvar, hükümetin defalarca griye boyamasına rağmen her seferinde gençler tarafından yeniden renklendirilmiş ve pasif direnişin simgesi haline gelmiştir. Bugün bile dünyanın dört bir yanından gelen ziyaretçiler kendi barış mesajlarını bu duvara bırakmaktadır. Duvarın hemen arkasında ise Prag'ın 'Küçük Venedik'i olarak bilinen Čertovka Kanalı yer alır. Eski değirmen çarklarının halen döndüğü, nehrin daracık evlerin arasından süzüldüğü bu kanal, son derece romantik ve sessiz bir kaçış noktasıdır. Malá Strana'nın bu gizli köşelerinde dolaşırken, aşk kilitleriyle dolu köprücüklerden geçecek ve Prag'ın bohem ve asi sanatsal ruhunu iliklerinize kadar hissedeceksiniz." 
+      },
+      { id: "dancing_house", title: "Dans Eden Ev (Dancing House)", defaultColor: "yellow", icon: "building-2", lat: 50.075460, lng: 14.414170, 
+        desc: "Prag'ın yüzyıllardır korunan geleneksel gotik, barok ve art nouveau mimarisine yapılmış en cesur ve modern dokunuşlardan biri olan Dans Eden Ev (Dancing House), Vltava Nehri kıyısında adeta yerçekimine meydan okuyarak kıvrılır. Ünlü mimarlar Vlado Milunić ve Frank Gehry tarafından tasarlanan bu dekonstrüktivist bina, ünlü dans çifti Fred Astaire ve Ginger Rogers'a atfen 'Fred ve Ginger' olarak da anılır. Taş kule dik duran Fred'i, camdan yapılmış kıvrımlı ve beli bükük kule ise onun kollarında dans eden Ginger'ı temsil eder. 1945'teki Amerikan bombardımanında yıkılan eski bir binanın yerine 1996'da inşa edilen bu yapı, ilk başlarda muhafazakar Praglılar tarafından oldukça tepki çekse de bugün şehrin en sevilen ve en çok fotoğraflanan simgelerinden birine dönüşmüştür. En üst katındaki cam teraslı kafeye çıkarak, bir yandan kahvenizi yudumlarken diğer yandan nehrin ve Prag Kalesi'nin o büyüleyici panoramik manzarasının tadını çıkarabilirsiniz." 
+      },
+      { id: "kafka_statue", title: "Franz Kafka Heykeli & Müzesi", defaultColor: "yellow", icon: "venetian-mask", lat: 50.081780, lng: 14.420000, 
+        desc: "Prag'ı Prag yapan en önemli edebi figürlerden biri olan Franz Kafka'nın, şehrin kasvetli ve bürokratik ruhunu eserlerine nasıl yansıttığını anlamak için bu durak kesinlikle şarttır. Şehrin merkezinde yer alan David Černý imzalı devasa Franz Kafka Dönen Baş Heykeli, yazarın parçalanmış, sürekli değişen ve metamorfoz geçiren zihin dünyasını kusursuz bir şekilde yansıtır. 42 bağımsız katmandan oluşan ve sürekli kendi etrafında dönerek yazarın yüzünü bozan ve yeniden birleştiren bu kinetik heykel, tam bir görsel şölendir. Diğer yandan Vltava nehrinin kenarında bulunan Franz Kafka Müzesi, yazarın hayatına, karanlık aile ilişkilerine ve yarattığı o absürt 'Kafkaesk' dünyaya derinlemesine bir dalış sunar. Müzenin karanlık, labirentvari koridorları ve rahatsız edici ses efektleri, sizi adeta 'Dava' veya 'Dönüşüm' romanlarının içine hapseder. Prag'ın o gizemli ve hafif tekinsiz atmosferini anlamak isteyenler için Kafka'nın ayak izlerini takip etmek kesinlikle büyüleyici bir kültürel deneyimdir." 
+      },
+      { id: "vysehrad", title: "Vyšehrad & Mezarlığı", defaultColor: "red", icon: "trees", lat: 50.064500, lng: 14.417800, 
+        desc: "Prag'ın turist kalabalığından uzakta, yüksek bir kayalığın üzerine kurulmuş olan Vyšehrad, şehrin en eski ve en mitolojik efsanelerinin doğduğu yerdir. 10. yüzyılda inşa edilen bu tarihi kale kompleksi, Vltava Nehri'nin en muazzam panoramik manzaralarından birini sunar. Geniş parkları ve sessiz yollarıyla yerel halkın huzur bulmak için tercih ettiği bu bölge, kalabalık köprülerden ve meydanlardan sonra adeta bir vaha gibidir. Kompleksin kalbinde yükselen neo-gotik Aziz Peter ve Paul Bazilikası, görkemli kuleleri ve içerisindeki Art Nouveau freskleriyle göz doldurur. Ancak buranın asıl önemi, hemen kilisenin bitişiğinde yer alan ve Çek ulusunun en önemli yazar, müzisyen ve sanatçılarının (Alphonse Mucha, Antonín Dvořák, Bedřich Smetana gibi) ebedi istirahatgahı olan ünlü Vyšehrad Mezarlığı'dır. Sanatsal mezar taşları ve heykellerle dolu bu alan, karanlık turizmi sevenler için oldukça estetik ve düşündürücü bir deneyim sunar. Gün batımında nehir kıyısındaki surlarda oturup Prag'ı yukarıdan izlemek paha biçilemezdir." 
+      },
+      { id: "bohnice", title: "Bohnice Mezarlığı (Alternatif Keşif)", defaultColor: "red", icon: "ghost", lat: 50.138400, lng: 14.399500, 
+        desc: "Prag gezinizde herkesin gittiği rotaların dışına çıkıp, şehrin en karanlık ve gizemli köşelerinden birini keşfetmek isterseniz rotanız kesinlikle 'Deliler Mezarlığı' olarak da bilinen Bohnice Mezarlığı olmalıdır. 1900'lerin başında kurulan ve Avrupa'nın en büyük psikiyatri hastanelerinden birine ait olan bu terk edilmiş mezarlık, merkezden uzakta, ormanlık bir alanın derinliklerinde yer alır. Burada hastalar, kimsesizler, suçlular ve I. Dünya Savaşı'ndan dönüp akıl sağlığını yitiren askerler yatmaktadır. Üzeri sarmaşıklarla kaplanmış, isimleri silinmiş yüzlerce mezar taşı ve çürümeye yüz tutmuş yıkık şapeli ile Bohnice, adeta korku filmlerinden fırlamış, tüyler ürpertici ama bir o kadar da melankolik bir atmosfere sahiptir. Geceleri satanist ayinlerin yapıldığı efsaneleri ve hayalet hikayeleriyle ünlü olan bu alan, gotik kültüre ve karanlık tarihe meraklı gezginler için tüyler ürperten ama inanılmaz derecede fotojenik ve kültürel bir 'niche' lokasyondur." 
+      },
+      { id: "nase_maso", title: "Naše Maso & Kantýna", defaultColor: "yellow", icon: "beef", lat: 50.090886, lng: 14.427771, 
+        desc: "Prag'a gelip de gerçek ve kaliteli Çek et kültürünü deneyimlemeden dönmek olmaz. Eski Şehir'deki Naše Maso, görünürde küçücük bir kasap dükkanı olsa da içeride pişen muazzam burgerler, sosisler ve et tartar menüleriyle kapısında her gün uzun kuyruklar oluşan efsanevi bir lezzet durağıdır. Kasap tezgahından seçtiğiniz taptaze etlerin gözünüzün önünde pişirilip, taze Çek birasıyla servis edilmesi burayı tam bir gastronomi mabedi yapar. Kantýna ise eski bir banka binasının yüksek mermer tavanları altında, self-servis konseptiyle çalışan devasa bir et salonudur. Ortadaki kasap tezgahından seçtiğiniz carpaccio, kemikli ızgara etler ve Çek usulü garnitürlerle masanıza geçer, kalabalık ve gürültülü ama inanılmaz keyifli bir atmosferde yerel halkla omuz omuza ziyafet çekersiniz. Modern Prag gastronomisinin geleneksel et kültürüyle nasıl harmanlandığını görmek ve damak çatlatmak için bu iki sarı noktalı lezzet durağı kesinlikle es geçilmemelidir." 
+      },
+      { id: "u_pinkasu", title: "U Pinkasů & U Glaubiců", defaultColor: "yellow", icon: "utensils", lat: 50.082987, lng: 14.422396, 
+        desc: "Çek mutfağının en geleneksel, en ağır ve en lezzetli yemeklerini tarihi bir atmosferde tatmak istiyorsanız, U Pinkasů ve U Glaubiců Prag'daki en doğru adreslerdir. 1843 yılında açılan U Pinkasů, Prag'da dünyaca ünlü Pilsner Urquell birasını servis eden ilk mekandır ve hala o tarihi dokusunu, dar merdivenlerini ve gotik avlusunu korumaktadır. Burada mutlaka yemeniz gereken şey, fırınlanmış yarım ördek, kırmızı lahana ve geleneksel Çek ekmeği 'knedlíky' tabağıdır. Malá Strana tarafında yer alan ve 700 yıllık devasa mahzenleriyle ünlü U Glaubiců ise, doğrudan yuvarlak bir somun ekmeğin içinin oyularak doldurulduğu efsanevi gulaş çorbasıyla tanınır. Ahşap masalarda, devasa porsiyonlarda servis edilen bu ağır yemekler, asırlık taş duvarların arasında yenildiğinde sizi doğrudan ortaçağ Bohemyası'na götürür. Yoğun lezzetler, bol sarımsak, ağır etler ve her yemeğin en iyi eşlikçisi olan köpüklü taze Çek birasıyla bu mekanlar, geleneksel kültürü damaklarınızda hissetmenizi sağlayacak." 
+      },
+      { id: "cafe_savoy", title: "Café Savoy & Etapa", defaultColor: "yellow", icon: "coffee", lat: 50.081300, lng: 14.407400, 
+        desc: "Prag sadece et ve biradan ibaret değil, aynı zamanda imparatorluk döneminden kalan muazzam bir kahve evi kültürüne sahiptir. 1893 yılında açılan Café Savoy, ahşap işlemeli devasa tavanı, kristal avizeleri ve zarif garsonlarıyla sizi bir anda Austro-Macaristan İmparatorluğu'nun elit günlerine ışınlar. Burada, gümüş tepsilerde sunulan zengin bir kahvaltı yapabilir, meşhur Café au Lait Savoy eşliğinde, taze pişmiş Çek tatlısı Buchtičky se šodó'nun (vanilya soslu tatlı çörek) tadını çıkarabilirsiniz. Eğer daha modern, İskandinav esintili ve üçüncü nesil bir kahve deneyimi arıyorsanız, Karlín bölgesindeki Etapa tam size göre. Kendi ekşi mayalı ekmeklerini fırından sıcak çıkaran, avokadolu tostları, matcha latteleri ve enfes pancake'leri ile genç Praglıların gözdesi olan Etapa, şehrin modern ve hip yüzünü keşfetmek için harika bir duraktır. Tarihin ağırlığından biraz sıyrılıp Prag'ın modern ritmine ayak uydurmak istediğinizde bu iki kafe tam bir sığınaktır." 
+      },
+      { id: "vytopna", title: "Výtopna Railway Restaurant", defaultColor: "yellow", icon: "train", lat: 50.079548, lng: 14.427845, 
+        desc: "Prag gezinize özellikle arkadaş grubuyla çıkıyorsanız, yemek yemeyi sadece bir ihtiyaçtan çıkarıp tam bir eğlenceye dönüştürecek yer Výtopna Railway Restaurant'tır. Wenceslas Meydanı'nın hemen üzerinde yer alan bu devasa restoran, masaların arasında, barın etrafında ve hatta tünellerden geçerek tüm mekanı dolaşan 900 metrelik devasa bir minyatür demiryolu ağına sahiptir. Sipariş ettiğiniz soğuk Çek biraları ve içecekler, garsonlar tarafından değil, doğrudan masanıza kadar gelen detaylı minyatür kargo trenleri tarafından servis edilir. İçeceklerinizi aldıktan sonra tren kornasını çalarak geri dönmektedir. Yemek menüsü genel olarak burger, patates kızartması ve bar atıştırmalıklarından oluşsa ve Michelin yıldızlı bir lezzet sunmasa da, bu mekan tamamen konseptin yarattığı tebessüm ve neşe için ziyaret edilir. Teknolojinin ve oyuncağın yemek kültürüyle birleştiği bu eşsiz atmosfer, sosyal medyanız için harika videolar çekebileceğiniz, yorgunluğunuzu eğlenceli bir şekilde atabileceğiniz son derece keyifli bir deneyimdir." 
+      },
+      { id: "anonymous_bar", title: "Anonymous Shrink's Office", defaultColor: "red", icon: "martini", lat: 50.081198, lng: 14.422502, 
+        desc: "Prag gece hayatı, sıradan barların ötesine geçip sizi gizemli ve sürreal konseptlerin içine çeker. Bunların en ilginci, yeri açıkça belirtilmeyen, ancak bir sığınağın derinliklerinde ya da gizli bir kapının ardında bulabileceğiniz Anonymous Shrink's Office kokteyl barıdır. Buraya girdiğinizde klasik bir içki menüsü beklemenize gerek yok; garsonlar, Rorschach (mürekkep lekesi) testleri kullanarak ruh halinize ve psikolojinize uygun özel kokteyller hazırlarlar. Guy Fawkes maskeleri takmış barmenlerin hazırladığı bu içkiler, dumanlar çıkaran şişeler, sıra dışı bardaklar ve bazen kan torbaları gibi tuhaf sunumlarla masanıza gelir. Barın o karanlık, loş ve 'yeraltı' atmosferi, kendinizi tamamen bir gizli servisin buluşma noktasındaymış gibi hissetmenizi sağlar. Rezervasyonun zorunlu olduğu ve içeri girmenin bile ufak bir bulmaca çözmeyi gerektirdiği bu mekan, Prag'da geçireceğiniz bir akşamı standart bir içki gecesinden çıkarıp, tamamen kişiselleştirilmiş, interaktif ve hafızalara kazınacak bir psikolojik kokteyl deneyimine dönüştürüyor." 
+      },
+      { id: "pilsner_exp", title: "Pilsner Urquell Experience", defaultColor: "red", icon: "beer", lat: 50.083745, lng: 14.423450, 
+        desc: "Çek Cumhuriyeti denilince akla gelen ilk şey şüphesiz dünyaca ünlü pilsner tipi biralardır. Prag'ın merkezinde yer alan Pilsner Urquell Experience, sadece bir şeyler içeceğiniz bir bar değil, aynı zamanda biranın tarihini, kültürünü ve doğru döküm tekniklerini öğreneceğiniz interaktif bir müze ve deneyim merkezidir. Burada, 1842 yılında icat edilen bu efsanevi sarı renkli, hafif acı biranın malzemelerinin nasıl seçildiğini, fermantasyon süreçlerini devasa 3D ekranlar ve dokunsal simülasyonlar eşliğinde öğreneceksiniz. En eğlenceli kısmı ise kendi biranızı en doğru köpük oranıyla (Hladinka tarzı) bardaktan taşmadan doldurmayı öğrendiğiniz atölyedir. Turun sonunda devasa, tarihi ahşap fıçıların bulunduğu mahzenlerde taze çekilmiş, pastörize edilmemiş gerçek fıçı birasının tadına bakarken yerel peynir ve et tabaklarıyla ziyafet çekebilirsiniz. Arkadaşlarınızla kahkahalar atarak bira doldurma yarışına girebileceğiniz bu deneyim, Çek kültürünün en temel yapıtaşını eğlenceli bir şekilde keşfetmenizi sağlar." 
+      }
+    ];
+
+    // Numaralandırma
+    const locationsData = rawLocations.map((loc, index) => {
+      return { ...loc, displayTitle: `#${index + 1} - ${loc.title}` };
+    });
+
+    // Otel Koordinatları (Harita Merkezi)
+    const hotelLat = 50.083556; 
+    const hotelLng = 14.423048;
+    const hotelLatLng = L.latLng(hotelLat, hotelLng);
+
+    const map = L.map('mapCanvas', { center: [hotelLat, hotelLng], zoom: 14, zoomControl: false, doubleClickZoom: false });
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '&copy; Esri', maxZoom: 16
+    }).addTo(map);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16
+    }).addTo(map);
+
+    // Haritaya tıklandığında filtre panelini kapat (minimize et)
+    map.on('click', function() {
+      toggleFilterPanel(false);
+    });
+
+    let markersLayer = L.layerGroup().addTo(map);
+    let overlaysLayer = L.layerGroup().addTo(map);
+
+    // --- Filtre Panelini Aç / Kapat (Minimize Mantığı) ---
+    window.toggleFilterPanel = function(show) {
+      const btn = document.getElementById('btnFilterMinimize');
+      const panel = document.getElementById('filterPanel');
+      if (show) {
+        btn.classList.add('hidden');
+        panel.classList.remove('hidden');
+      } else {
+        btn.classList.remove('hidden');
+        panel.classList.add('hidden');
+      }
+    };
+
+    // --- KALICI YÜRÜME MESAFESİ ETİKETİ YARATAN FONKSİYON ---
+    function addPermanentLabel(lat, lng, radius, text) {
+      const offsetLat = lat + (radius / 111320);
+      
+      const labelIcon = L.divIcon({
+        className: 'custom-circle-label',
+        html: `<div class="label-content bg-slate-900/90 backdrop-blur-md text-sky-400 text-[10px] sm:text-xs font-extrabold px-3 py-1.5 rounded-lg border border-sky-500/50 shadow-lg shadow-sky-900/20 whitespace-nowrap">${text}</div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 10]
+      });
+
+      L.marker([offsetLat, lng], {icon: labelIcon, interactive: false}).addTo(overlaysLayer);
+    }
+
+    window.toggleOverlays = function() {
+      overlaysLayer.clearLayers();
+      const showWalk = document.getElementById('walkCheck').checked;
+
+      if (showWalk) {
+        L.circle([hotelLat, hotelLng], {radius: 2000, color: '#38bdf8', weight: 1.5, fillOpacity: 0.02, dashArray: '8,8', interactive: false}).addTo(overlaysLayer);
+        L.circle([hotelLat, hotelLng], {radius: 1000, color: '#38bdf8', weight: 1.5, fillOpacity: 0.05, dashArray: '5,5', interactive: false}).addTo(overlaysLayer);
+        L.circle([hotelLat, hotelLng], {radius: 500, color: '#38bdf8', weight: 2, fillOpacity: 0.08, interactive: false}).addTo(overlaysLayer);
+
+        addPermanentLabel(hotelLat, hotelLng, 2000, "🚶‍♂️ 2 KM (25 dk)");
+        addPermanentLabel(hotelLat, hotelLng, 1000, "🚶‍♂️ 1 KM (12 dk)");
+        addPermanentLabel(hotelLat, hotelLng, 500, "🚶‍♂️ 500m (6 dk)");
+      }
+    }
+
+    window.savePinData = function(id) {
+      const colorSelect = document.getElementById('colorSelect-' + id);
+      const noteInput = document.getElementById('noteInput-' + id);
+      
+      if (colorSelect) {
+        appData.colors[id] = colorSelect.value;
+      } else {
+        appData.colors[id] = "blue";
+      }
+      
+      appData.notes[id] = noteInput.value.trim();
+      syncDataToStorage();
+      map.closePopup();
+    };
+
+    window.goToListAndHighlight = function(locId) {
+      switchView('list');
+      setTimeout(() => {
+        const listElement = document.getElementById('list-item-' + locId);
+        if (listElement) {
+          listElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          listElement.classList.add('flash-active');
+          setTimeout(() => listElement.classList.remove('flash-active'), 2000);
+        }
+      }, 300);
+    };
+
+    function renderMapAndList() {
+      const filterVal = document.getElementById('pinFilter').value;
+      markersLayer.clearLayers();
+      const listContainer = document.getElementById('listContentContainer');
+      listContainer.innerHTML = '';
+
+      locationsData.forEach(loc => {
+        let activeColor = appData.colors[loc.id] || loc.defaultColor;
+
+        if (filterVal !== 'all' && activeColor !== filterVal && activeColor !== 'blue') return;
+
+        // MAP MARKER
+        const customIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="pin-marker pin-${activeColor}"><i data-lucide="${loc.icon}" class="w-4 h-4 sm:w-4 sm:h-4"></i></div>`,
+          iconSize: [34, 34], iconAnchor: [17, 17]
+        });
+
+        const marker = L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(markersLayer);
+        
+        const existingNote = appData.notes[loc.id] || "";
+        const noteDisplayHtml = existingNote 
+          ? `<div class="bg-slate-950 p-3 rounded-xl border border-slate-700 mb-3"><p class="text-[11px] sm:text-xs text-slate-300 italic">"${existingNote}"</p></div>`
+          : `<div class="bg-slate-950 p-2.5 rounded-xl border border-slate-700 mb-3"><p class="text-[10px] sm:text-[11px] text-slate-500 text-center">Henüz not eklenmemiş.</p></div>`;
+
+        const distMeters = hotelLatLng.distanceTo(L.latLng(loc.lat, loc.lng));
+        const walkTimeMins = Math.ceil((distMeters * 1.3) / 80);
+        
+        let walkInfoHtml = "";
+        let colorSelectorHtml = "";
+
+        if (loc.id !== "liberty") {
+          if (walkTimeMins <= 30) {
+            walkInfoHtml = `<div class="text-[11px] text-emerald-400 font-bold mb-3 flex items-center gap-1.5 bg-emerald-950/40 p-2 rounded-lg border border-emerald-900/50"><i data-lucide="footprints" class="w-3.5 h-3.5"></i> Otele ~${walkTimeMins} dk yürüme mesafesinde</div>`;
+          } else {
+            walkInfoHtml = `<div class="text-[11px] text-amber-400 font-bold mb-3 flex items-center gap-1.5 bg-amber-950/40 p-2 rounded-lg border border-amber-900/50"><i data-lucide="bus" class="w-3.5 h-3.5"></i> Otele uzak (~${walkTimeMins} dk) - Taşıt önerilir</div>`;
+          }
+          
+          colorSelectorHtml = `
+            <label class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Önem / Renk Ata:</label>
+            <select id="colorSelect-${loc.id}" class="w-full bg-slate-900 text-white text-base sm:text-sm p-3 sm:p-2.5 rounded-xl border border-slate-700 mb-3 outline-none focus:border-sky-500">
+              <option value="green" ${activeColor === 'green' ? 'selected' : ''}>🟢 Yeşil (Kesinlikle Görülmeli)</option>
+              <option value="yellow" ${activeColor === 'yellow' ? 'selected' : ''}>🟡 Sarı (Görsek Fena Olmaz)</option>
+              <option value="red" ${activeColor === 'red' ? 'selected' : ''}>🔴 Kırmızı (Yakınsak Uğranır)</option>
+            </select>
+          `;
+        } else {
+          activeColor = "blue";
+          walkInfoHtml = `<div class="text-[11px] text-sky-400 font-bold mb-3 flex items-center gap-1.5 bg-sky-950/40 p-2 rounded-lg border border-sky-900/50"><i data-lucide="home" class="w-3.5 h-3.5"></i> Başlangıç Noktanız (Oteliniz)</div>`;
+          colorSelectorHtml = `<input type="hidden" id="colorSelect-${loc.id}" value="blue" />`;
+        }
+
+        // Google Maps için ismi temizle ve sonuna Prag ekle
+        let cleanName = loc.title.split('(')[0].split('&')[0].trim();
+        let googleMapsQuery = encodeURIComponent(cleanName + " Prag");
+
+        // POPUP
+        const popupContent = `
+          <div class="w-[220px] sm:w-[260px] font-sans">
+            <h3 class="text-white font-extrabold text-sm sm:text-base mb-2 border-b border-slate-700 pb-2">${loc.displayTitle}</h3>
+            
+            ${walkInfoHtml}
+
+            <label class="text-[10px] text-slate-400 font-bold uppercase mb-1 block">Mevcut Notunuz:</label>
+            ${noteDisplayHtml}
+
+            ${colorSelectorHtml}
+            
+            <label class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Notu Güncelle / Ekle:</label>
+            <textarea id="noteInput-${loc.id}" rows="2" class="w-full bg-slate-900 text-white text-base sm:text-sm p-3 sm:p-2.5 rounded-xl border border-slate-700 mb-4 outline-none resize-none" placeholder="Buraya yazın...">${existingNote}</textarea>
+            
+            <div class="space-y-2">
+              <button onclick="savePinData('${loc.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold py-3 sm:py-2.5 rounded-xl transition shadow-lg shadow-emerald-900/40">Güncelle & Kaydet</button>
+              <div class="flex gap-2">
+                <button onclick="goToListAndHighlight('${loc.id}')" class="flex-1 flex justify-center items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-3 sm:py-2.5 rounded-xl transition">
+                  <i data-lucide="info" class="w-3.5 h-3.5"></i> Hakkında
+                </button>
+                <a href="https://www.google.com/maps/search/?api=1&query=${googleMapsQuery}" target="_blank" class="flex-1 flex justify-center items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-3 sm:py-2.5 rounded-xl transition">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Haritalarda Göster
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent, { className: 'custom-popup' });
+
+        marker.on('dblclick', () => {
+          goToListAndHighlight(loc.id);
+        });
+
+        // LIST CARD
+        let badgeStyle = "";
+        if (activeColor === "blue") badgeStyle = "bg-blue-500 shadow-blue-500/50";
+        if (activeColor === "green") badgeStyle = "bg-emerald-500 shadow-emerald-500/50";
+        if (activeColor === "yellow") badgeStyle = "bg-amber-500 shadow-amber-500/50";
+        if (activeColor === "red") badgeStyle = "bg-red-500 shadow-red-500/50";
+
+        const card = document.createElement('div');
+        card.id = 'list-item-' + loc.id;
+        card.className = "bg-slate-900/80 backdrop-blur border border-slate-800 p-6 sm:p-8 rounded-3xl shadow-xl transition-all relative overflow-hidden group";
+        
+        card.innerHTML = `
+          <div class="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-10 transition duration-500 pointer-events-none"><i data-lucide="${loc.icon}" class="w-32 h-32"></i></div>
+          <div class="flex items-center gap-3.5 mb-5 relative z-10">
+            <span class="flex items-center justify-center w-12 h-12 rounded-full ${badgeStyle} shadow-lg shrink-0"><i data-lucide="${loc.icon}" class="w-6 h-6 text-white"></i></span>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight">${loc.displayTitle}</h2>
+          </div>
+          <p class="text-slate-300 text-sm sm:text-[15px] leading-relaxed text-justify relative z-10 mb-5">${loc.desc}</p>
+          ${existingNote ? `<div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800/80 inline-block w-full sm:w-auto"><span class="text-xs text-sky-400 font-bold block mb-1.5 flex items-center gap-1.5"><i data-lucide="pen-line" class="w-3.5 h-3.5"></i> Arkadaşınızın Notu:</span><span class="text-sm text-slate-200 italic font-medium">"${existingNote}"</span></div>` : ''}
+        `;
+        listContainer.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    window.switchView = function(view) {
+      document.getElementById('btnViewMap').className = "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-slate-400 hover:text-white transition";
+      document.getElementById('btnViewList').className = "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-slate-400 hover:text-white transition";
+      document.getElementById('viewMap').classList.add('hidden');
+      document.getElementById('viewList').classList.add('hidden');
+
+      if (view === 'map') {
+        document.getElementById('btnViewMap').className = "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg bg-sky-600 text-white transition shadow-md";
+        document.getElementById('viewMap').classList.remove('hidden');
+        setTimeout(() => map.invalidateSize(), 200);
+      } else {
+        document.getElementById('btnViewList').className = "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg bg-sky-600 text-white transition shadow-md";
+        document.getElementById('viewList').classList.remove('hidden');
+      }
+    }
+
+    function showToast() {
+      const toast = document.getElementById('toast');
+      toast.classList.remove('opacity-0');
+      setTimeout(() => toast.classList.add('opacity-0'), 2500);
+    }
+
+    window.openFurkanModal = function() { document.getElementById('furkanModal').classList.remove('hidden'); }
+    window.closeFurkanModal = function() { document.getElementById('furkanModal').classList.add('hidden'); }
+    
+    window.sendFurkanMessage = function() {
+      const name = document.getElementById('furkanSenderName').value.trim();
+      const msg = document.getElementById('furkanMessageText').value.trim();
+      
+      if(name === "" || msg === "") {
+        alert("Lütfen isminizi ve mesajınızı girin!"); return;
+      }
+
+      appData.furkanLogs.push({ sender: name, message: msg, time: new Date().toLocaleString('tr-TR') });
+      syncDataToStorage();
+      
+      document.getElementById('furkanSenderName').value = "";
+      document.getElementById('furkanMessageText').value = "";
+      closeFurkanModal();
+      
+      const toast = document.getElementById('toast');
+      toast.innerText = "✓ Mesaj Furkan'a İletildi!";
+      showToast();
+      setTimeout(() => toast.innerText = "✓ Buluta Kaydedildi!", 2600);
+    };
+
+    let keyBuffer = '';
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      keyBuffer += e.key.toLowerCase();
+      if (keyBuffer.length > 20) keyBuffer = keyBuffer.substring(keyBuffer.length - 20);
+      if (keyBuffer.includes('adminmode')) {
+        keyBuffer = ''; openAdminMode();
+      }
+    });
+
+    function openAdminMode() {
+      document.getElementById('adminModal').classList.remove('hidden');
+      const content = document.getElementById('adminLogContent');
+      const countText = document.getElementById('logCountText');
+      content.innerHTML = '';
+
+      if (!appData.furkanLogs || appData.furkanLogs.length === 0) {
+        content.innerHTML = `<div class="text-slate-500 text-center py-8 text-sm font-medium">Hiç mesaj yok.</div>`;
+        countText.innerText = "0 mesaj";
+      } else {
+        countText.innerText = `${appData.furkanLogs.length} mesaj`;
+        [...appData.furkanLogs].reverse().forEach(log => {
+          content.insertAdjacentHTML('beforeend', `
+            <div class="bg-slate-950 border border-slate-800 p-4 sm:p-5 rounded-2xl">
+              <div class="flex justify-between items-start mb-3">
+                <h4 class="text-sky-400 font-extrabold text-sm flex items-center gap-1.5"><i data-lucide="user" class="w-4 h-4 inline"></i> ${log.sender}</h4>
+                <span class="text-[10px] text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-700">${log.time}</span>
+              </div>
+              <p class="text-slate-300 text-sm leading-relaxed">${log.message}</p>
+            </div>
+          `);
+        });
+      }
+      lucide.createIcons();
+    }
+    window.closeAdminMode = function() { document.getElementById('adminModal').classList.add('hidden'); }
+    
+    window.clearFurkanLogs = function() {
+      if (confirm("Gelen tüm mesajları silmek istediğine emin misin?")) {
+        appData.furkanLogs = [];
+        syncDataToStorage();
+        openAdminMode();
+      }
+    };
+
+    window.onload = initData;
+  </script>
+</body>
+</html>

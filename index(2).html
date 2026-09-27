@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Tour Turchia 2026 | Bursa • İzmir • Istanbul</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #090d16; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+    /* Custom Waypoint Pins */
+    .pin-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.75);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 13px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    .pin-marker:hover, .pin-marker.active-pin {
+      transform: scale(1.28);
+      border-color: #38bdf8;
+      box-shadow: 0 0 22px rgba(56, 189, 248, 0.9);
+    }
+    .pin-bursa { background: linear-gradient(135deg, #10b981, #047857); }
+    .pin-izmir { background: linear-gradient(135deg, #0ea5e9, #0369a1); }
+    .pin-istanbul { background: linear-gradient(135deg, #f59e0b, #b45309); }
+    .pin-hub { background: linear-gradient(135deg, #ec4899, #be185d); }
+    
+    /* Vigone Heart Marker (Visible only at low zoom) */
+    .pin-vigone-heart {
+      background: linear-gradient(135deg, #f43f5e, #be123c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.75);
+      color: #ffffff;
+      font-size: 16px;
+      cursor: default;
+    }
+
+    /* Heart Rain Animation for Easter Egg */
+    @keyframes heartFall {
+      0% {
+        transform: translateY(-50px) scale(0.6) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(105vh) scale(1.2) rotate(360deg);
+        opacity: 0;
+      }
+    }
+    .falling-heart {
+      position: fixed;
+      top: -40px;
+      z-index: 9999;
+      pointer-events: none;
+      animation: heartFall linear forwards;
+    }
+
+    /* Cool Popup Animation for Mora & Rocky Easter Eggs */
+    @keyframes popIn {
+      0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+      50% { transform: scale(1.08) rotate(3deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    @keyframes popOut {
+      0% { transform: scale(1) rotate(0deg); opacity: 1; }
+      100% { transform: scale(0.4) rotate(10deg); opacity: 0; }
+    }
+    .mora-popup-anim {
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .mora-popout-anim {
+      animation: popOut 0.3s ease-in forwards;
+    }
+
+    /* Glowing Animation for Boxing Gloves */
+    @keyframes glowPulse {
+      0%, 100% { filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.8)); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 30px rgba(239, 68, 68, 1)); transform: scale(1.1); }
+    }
+    .boxing-glow {
+      animation: glowPulse 1.2s infinite ease-in-out;
+    }
+
+    /* Custom Leaflet Tooltip for Route Segments */
+    .leaflet-popup-content-wrapper {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      border: 1px solid #334155 !important;
+      border-radius: 14px !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
+      padding: 4px !important;
+    }
+    .leaflet-popup-tip {
+      background: #0f172a !important;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-hidden select-none">
+
+  <!-- Rocky Theme Audio Element (Using reliable direct MP3 mirror) -->
+  <audio id="rockyAudio" src="https://www.soundboard.com/st/play/273397" preload="auto"></audio>
+
+  <!-- Rocky Easter Egg Glowing Notification Overlay -->
+  <div id="rockyOverlay" class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+    <div id="rockyCard" class="bg-slate-900 border-2 border-red-500 p-6 rounded-3xl shadow-2xl max-w-sm w-full text-center flex flex-col items-center space-y-3">
+      <div class="text-5xl boxing-glow">🥊 🥊</div>
+      <h3 class="text-lg font-extrabold text-white tracking-wide">EYE OF THE TIGER!</h3>
+      <p class="text-xs text-sky-400 font-bold uppercase tracking-widest">Tema di Rocky in riproduzione...</p>
+    </div>
+  </div>
+
+  <!-- Mora Easter Egg Popup Overlay -->
+  <div id="moraOverlay" class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+    <div id="moraCard" class="bg-slate-900 border border-slate-700 p-3 sm:p-4 rounded-3xl shadow-2xl max-w-sm w-full text-center flex flex-col items-center">
+      <img src="https://i.hizliresim.com/muzuslib.jpg" alt="Mora" class="w-64 h-64 sm:w-80 sm:h-80 rounded-2xl object-cover shadow-lg border border-slate-800" />
+      <span class="mt-3 text-xs font-bold text-sky-400 uppercase tracking-widest">🐾 Easter Egg Sbloccato!</span>
+    </div>
+  </div>
+
+  <!-- Fullscreen Photo Lightbox -->
+  <div id="imageLightbox" onclick="closeLightbox()" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl opacity-0 pointer-events-none transition-all duration-300">
+    <button onclick="closeLightbox()" class="absolute top-4 right-4 text-white bg-slate-800/80 hover:bg-slate-700 p-2.5 rounded-full z-10 transition">
+      <i data-lucide="x" class="w-6 h-6"></i>
+    </button>
+    <div class="relative max-w-5xl max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
+      <img id="lightboxImg" src="" alt="Fullscreen Preview" class="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl border border-slate-800" />
+      <p id="lightboxCaption" class="text-center text-slate-300 font-semibold text-sm mt-3 px-4 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl"></p>
+    </div>
+  </div>
+
+  <!-- Welcome Greeting Popup Modal -->
+  <div id="welcomeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-700 max-w-lg w-full rounded-3xl p-5 sm:p-8 shadow-2xl relative flex flex-col space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 sm:p-3 bg-gradient-to-tr from-amber-500 to-rose-500 rounded-2xl text-white shadow-lg shadow-amber-500/20 shrink-0">
+          <i data-lucide="heart" class="w-5 h-5 sm:w-6 sm:h-6 fill-current"></i>
+        </div>
+        <div>
+          <h2 id="modalGreetingTitle" class="text-base sm:text-xl font-extrabold text-white leading-tight">Benvenute famiglie Bergero e Borrio!</h2>
+          <span class="text-[11px] text-sky-400 font-semibold tracking-wider uppercase">Turchia 2026</span>
+        </div>
+      </div>
+      
+      <p id="modalGreetingText" class="text-xs sm:text-sm text-slate-300 leading-relaxed pt-1">
+        Sono felicissimo che verrete presto in Turchia! Ho preparato questo sito per voi per consultare comodamente cosa mangiare e cosa visitare non appena atterrerete. Continuerò ad aggiungere nuove città, luoghi da non perdere e piatti tipici. Fatemi sapere in anticipo se c'è qualcosa di specifico che volete che cerchi per voi.<br><br>
+        Ci vediamo a Istanbul! &lt;3
+      </p>
+
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-3">
+        <button onclick="closeWelcomeModal()" id="modalBtnStart" class="w-full py-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-sky-900/40 transition active:scale-95">
+          Esplora la Guida 🚀
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-6 py-2.5 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <div class="bg-gradient-to-tr from-sky-500 to-indigo-600 p-1.5 sm:p-2 rounded-xl text-white shadow-lg shadow-sky-500/20">
+        <i data-lucide="compass" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+      </div>
+      <div>
+        <h1 id="navTitle" class="text-sm sm:text-lg font-bold tracking-tight text-white leading-tight">
+          Tour Turchia 2026
+        </h1>
+        <p id="navSub" class="text-[10px] sm:text-xs text-slate-400 hidden xs:block">Bursa • İzmir & Efeso • Istanbul</p>
+      </div>
+    </div>
+
+    <!-- View Switcher -->
+    <div class="flex items-center p-1 bg-slate-950 rounded-xl border border-slate-800 text-[11px] sm:text-xs font-bold overflow-x-auto">
+      <button onclick="switchMainView('map')" id="btnViewMap" class="view-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-sky-600 text-white transition shadow-sm shrink-0">
+        <i data-lucide="map" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span id="labelViewMap">Mappa</span>
+      </button>
+      <button onclick="switchMainView('list')" id="btnViewList" class="view-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition shrink-0">
+        <i data-lucide="utensils" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span id="labelViewList">Cibo</span>
+      </button>
+      <button onclick="switchMainView('trans')" id="btnViewTrans" class="view-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition shrink-0">
+        <i data-lucide="bus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span id="labelViewTrans">Trasporti</span>
+      </button>
+    </div>
+
+    <!-- Language Controls -->
+    <div class="flex items-center gap-2">
+      <button onclick="toggleLanguage()" class="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold px-2.5 sm:px-3 py-1.5 rounded-lg shadow-sm transition active:scale-95">
+        <i data-lucide="globe" class="w-3.5 h-3.5 text-sky-400"></i>
+        <span id="langLabel">IT</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- VIEW 1: Map View -->
+  <div id="viewMapContainer" class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- Mobile Sub-Toggle Bar -->
+    <div class="md:hidden flex bg-slate-900 border-b border-slate-800 px-3 py-2 justify-between items-center z-20 shrink-0">
+      <div class="flex p-0.5 bg-slate-950 rounded-lg border border-slate-800 text-xs font-semibold w-full">
+        <button onclick="setMobileSubTab('map')" id="mobTabMap" class="flex-1 py-1.5 rounded-md text-center transition bg-slate-800 text-white flex items-center justify-center gap-1.5">
+          <i data-lucide="map" class="w-3.5 h-3.5 text-sky-400"></i> <span id="lblMobMap">Mappa</span>
+        </button>
+        <button onclick="setMobileSubTab('list')" id="mobTabList" class="flex-1 py-1.5 rounded-md text-center transition text-slate-400 flex items-center justify-center gap-1.5">
+          <i data-lucide="list-ordered" class="w-3.5 h-3.5"></i> <span id="lblMobList">Tappe (15)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Left Sidebar: Itinerary Stops -->
+    <aside id="sidebarMapList" class="hidden md:flex w-full md:w-[380px] lg:w-[420px] bg-slate-900 border-r border-slate-800 flex-col shrink-0 z-20 h-full">
+      
+      <!-- Phase Filter -->
+      <div class="p-2.5 sm:p-3 bg-slate-900 border-b border-slate-800 shrink-0">
+        <div class="grid grid-cols-4 gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-semibold">
+          <button onclick="setPhase('all')" id="tab-all" class="phase-tab py-1.5 rounded-lg text-center transition bg-slate-800 text-white">Tutti</button>
+          <button onclick="setPhase('bursa')" id="tab-bursa" class="phase-tab py-1.5 rounded-lg text-center transition text-slate-400 hover:text-white">Bursa</button>
+          <button onclick="setPhase('izmir')" id="tab-izmir" class="phase-tab py-1.5 rounded-lg text-center transition text-slate-400 hover:text-white">İzmir</button>
+          <button onclick="setPhase('istanbul')" id="tab-istanbul" class="phase-tab py-1.5 rounded-lg text-center transition text-slate-400 hover:text-white">Istanbul</button>
+        </div>
+      </div>
+
+      <!-- Stop Cards List -->
+      <div id="stopsList" class="flex-1 overflow-y-auto custom-scrollbar p-2.5 sm:p-3 space-y-2"></div>
+
+      <!-- WhatsApp CTA -->
+      <div class="p-2.5 sm:p-3 bg-slate-950 border-t border-slate-800 shrink-0 flex items-center justify-between gap-2">
+        <a id="waButtonMap" href="https://wa.me/905511911693?text=Ciao%21+Vorrei+suggerire+un+posto+o+un+piatto+per+il+nostro+viaggio+in+Turchia+%F0%9F%87%B9%F0%9F%87%B7" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-emerald-200 py-2 px-3 rounded-xl text-xs font-bold transition shadow-sm active:scale-95">
+          <i data-lucide="message-circle" class="w-4 h-4 text-emerald-400"></i>
+          <span id="waTextMap">Hai un'idea? Scrivimi su WhatsApp</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Map Canvas Container -->
+    <div id="mapCanvasContainer" class="flex-1 relative h-full bg-slate-950 flex flex-col">
+      <div id="map" class="w-full h-full z-10"></div>
+      
+      <!-- Legend -->
+      <div class="absolute top-3 right-3 z-20 bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl border border-slate-800 shadow-xl hidden sm:block text-xs space-y-1.5 pointer-events-none">
+        <div id="legendTitle" class="font-bold text-slate-200 text-[10px] uppercase tracking-wider mb-1">Itinerario</div>
+        <div class="flex items-center gap-2 text-rose-400 text-[11px] font-bold">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Vigone (Torino) 🇮🇹
+        </div>
+        <div class="flex items-center gap-2 text-slate-300 text-[11px]">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 1. Bursa & Trekking
+        </div>
+        <div class="flex items-center gap-2 text-slate-300 text-[11px]">
+          <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> 2. Nazarköy, Şirince & Mare
+        </div>
+        <div class="flex items-center gap-2 text-slate-300 text-[11px]">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 3. Istanbul Classica
+        </div>
+        <div class="flex items-center gap-2 text-emerald-400 text-[11px] font-semibold pt-1 border-t border-slate-800">
+          <span class="w-2.5 h-1 rounded-full bg-emerald-400"></span> <span id="lblNextRoute">Tratta Successiva</span>
+        </div>
+      </div>
+
+      <!-- Slide-Up Detail Drawer (Ultra-minimal on mobile) -->
+      <div id="detailDrawer" class="absolute bottom-0 left-0 right-0 md:bottom-4 md:left-auto md:right-4 md:w-[440px] z-30 bg-slate-900/95 backdrop-blur-2xl border-t md:border border-slate-700 rounded-t-3xl md:rounded-2xl shadow-2xl transition-all duration-300 translate-y-full md:translate-y-8 opacity-0 pointer-events-none overflow-hidden max-h-[44vh] md:max-h-[85vh] flex flex-col">
+        
+        <div class="md:hidden w-12 h-1 bg-slate-700 rounded-full mx-auto my-1 shrink-0"></div>
+
+        <!-- Image Container with Double Click Fullscreen (Made smaller on mobile) -->
+        <div class="relative h-20 sm:h-36 w-full shrink-0 bg-slate-950 group cursor-pointer" ondblclick="openLightboxFromDrawer()">
+          <img id="drawerImage" src="" alt="Landmark" class="w-full h-full object-cover transition-opacity duration-300" />
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+          
+          <div class="absolute top-2 left-3 bg-slate-900/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[10px] text-slate-300 hidden sm:flex items-center gap-1 border border-slate-700 pointer-events-none opacity-80 group-hover:opacity-100">
+            <i data-lucide="maximize-2" class="w-3 h-3 text-sky-400"></i> Doppio clic
+          </div>
+
+          <button onclick="closeDrawer()" class="absolute top-1.5 right-2 text-white bg-slate-900/80 hover:bg-slate-800 p-1 rounded-full backdrop-blur-md transition">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          </button>
+          
+          <div class="absolute bottom-1.5 left-3 right-3 sm:left-4 sm:right-4">
+            <span id="drawerBadge" class="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/35"></span>
+            <h3 id="drawerTitle" class="text-xs sm:text-lg font-extrabold text-white mt-0.5 leading-tight line-clamp-1"></h3>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-2.5 sm:p-4 space-y-2 text-xs">
+          <div>
+            <h4 id="labelAbout" class="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Dettagli & Esperienza</h4>
+            <p id="drawerDesc" class="text-slate-300 leading-relaxed text-[11px] sm:text-[13px]"></p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-800">
+            <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+              <span id="labelHighlight" class="text-sky-400 block font-bold mb-0.5 flex items-center gap-1 text-[10px]">
+                <i data-lucide="camera" class="w-3 h-3"></i> Per i Ragazzi
+              </span>
+              <p id="drawerYoungTip" class="text-slate-300 leading-snug text-[10px] sm:text-xs"></p>
+            </div>
+            <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+              <span id="labelFood" class="text-amber-400 block font-bold mb-0.5 flex items-center gap-1 text-[10px]">
+                <i data-lucide="utensils" class="w-3 h-3"></i> Cibo & Specialità
+              </span>
+              <p id="drawerFoodTip" class="text-slate-300 leading-snug text-[10px] sm:text-xs"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Drawer Navigation Footer -->
+        <div class="md:hidden shrink-0 bg-slate-950/95 border-t border-slate-800 p-2 flex items-center justify-between gap-2 backdrop-blur-md">
+          <button id="btnPrevStop" onclick="navStop(-1)" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
+            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> <span id="lblPrev">Prec.</span>
+          </button>
+          <button id="btnNextStop" onclick="navStop(1)" class="flex-1 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-sky-900/30 flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span id="lblNext">Succ.</span> <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- VIEW 2: Complete Food Explorer -->
+  <div id="viewListContainer" class="flex-1 flex flex-col overflow-hidden hidden bg-slate-950">
+    
+    <!-- Filter Control Bar -->
+    <div class="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 shrink-0 space-y-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <i data-lucide="utensils" class="w-4 h-4 text-sky-400"></i>
+          <span id="filterHeading" class="text-xs font-bold text-slate-200 uppercase tracking-wider">Cibo Turco da Provare</span>
+        </div>
+        <span id="listCounter" class="text-[11px] font-bold text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/20">
+          Caricamento...
+        </span>
+
+      </div>
+
+      <!-- Filters -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+        <div>
+          <label id="lblCatFilter" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tipo di Cibo</label>
+          <select id="filterCategory" onchange="renderListCatalog()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2 font-medium focus:ring-1 focus:ring-sky-500 focus:outline-none">
+            <option value="all">Tutti i Cibi</option>
+            <option value="savory">🍖 Piatti Salati & Kebap</option>
+            <option value="sweet">🍯 Dolci & Dessert</option>
+            <option value="street">🥪 Street Food & Spuntini</option>
+          </select>
+        </div>
+
+        <div>
+          <label id="lblPriceFilter" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fascia di Prezzo</label>
+          <select id="filterPrice" onchange="renderListCatalog()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2 font-medium focus:ring-1 focus:ring-sky-500 focus:outline-none">
+            <option value="all">Tutte le Fasce (₺, ₺₺, ₺₺₺)</option>
+            <option value="₺">₺ Economico / Street Food</option>
+            <option value="₺₺">₺₺ Medio</option>
+            <option value="₺₺₺">₺₺₺ Ristorante / Piatto Ricco</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catalog Grid -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6">
+      <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4"></div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="p-3 bg-slate-900/95 border-t border-slate-800 shrink-0 flex items-center justify-between">
+      <div class="text-xs text-slate-400 hidden sm:block">
+        <span id="footerSuggestionNote">Vuoi aggiungere un piatto o un locale che hai visto online?</span>
+      </div>
+      <a id="waButtonList" href="https://wa.me/905511911693?text=Ciao%21+Vorrei+suggerire+un+posto+o+un+piatto+per+il+nostro+viaggio+in+Turchia+%F0%9F%87%B9%F0%9F%87%B7" target="_blank" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-lg shadow-emerald-900/40 active:scale-95">
+        <i data-lucide="message-circle" class="w-4 h-4"></i>
+        <span id="waTextList">Suggerisci su WhatsApp (+90 551 191 16 93)</span>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- VIEW 3: Transportation (WIP) -->
+  <div id="viewTransportContainer" class="flex-1 flex-col items-center justify-center p-6 bg-slate-950 hidden overflow-y-auto">
+    <div class="p-8 bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full shadow-2xl text-center space-y-5 mt-auto mb-auto">
+      <div class="w-16 h-16 bg-sky-500/10 text-sky-400 flex items-center justify-center rounded-2xl mx-auto border border-sky-500/20">
+        <i data-lucide="bus" class="w-8 h-8"></i>
+      </div>
+      <h2 id="transTitle" class="text-xl sm:text-2xl font-bold text-white tracking-tight">
+        Trasporti & Logistica (In Sviluppo)
+      </h2>
+      <p id="transDesc" class="text-slate-400 text-sm leading-relaxed max-w-md mx-auto">
+        In questa sezione spiegheremo come ci muoveremo all'interno delle varie città. Dalla tessera della metropolitana (Istanbulkart) ai traghetti sul Bosforo, fino ai dolmuş e ai taxi. Stiamo preparando tutto il necessario per viaggiare senza pensieri!
+      </p>
+      
+      <div class="flex justify-center gap-4 pt-4 text-slate-500">
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 shadow-inner"><i data-lucide="train-front" class="w-5 h-5"></i></div>
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 shadow-inner"><i data-lucide="ship" class="w-5 h-5"></i></div>
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 shadow-inner"><i data-lucide="car-taxi-front" class="w-5 h-5"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentLang = 'it';
+    let activePhase = 'all';
+    let currentMainView = 'map';
+    let selectedStopId = null;
+    let mobileSubTab = 'map';
+
+    // Easter Egg Trackers
+    let keyBuffer = '';
+    const secretCode = 'maddalena';
+    const moraCode = 'mora';
+    const guilyCode = 'guily';
+    const valterCode = 'valter';
+    let moraTimeout = null;
+    let rockyTimeout = null;
+
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      
+      keyBuffer += e.key.toLowerCase();
+      if (keyBuffer.length > 25) {
+        keyBuffer = keyBuffer.substring(keyBuffer.length - 25);
+      }
+
+      if (keyBuffer.includes(secretCode)) {
+        keyBuffer = '';
+        triggerHeartRain();
+      } else if (keyBuffer.includes(moraCode)) {
+        keyBuffer = '';
+        triggerMoraEasterEgg();
+      } else if (keyBuffer.includes(guilyCode)) {
+        keyBuffer = '';
+        triggerWeedRain();
+      } else if (keyBuffer.includes(valterCode)) {
+        keyBuffer = '';
+        triggerRockyTheme();
+      }
+    });
+
+    function triggerMoraEasterEgg() {
+      const overlay = document.getElementById('moraOverlay');
+      const card = document.getElementById('moraCard');
+      
+      if (moraTimeout) clearTimeout(moraTimeout);
+
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100', 'pointer-events-auto');
+      card.classList.remove('mora-popout-anim');
+      card.classList.add('mora-popup-anim');
+
+      moraTimeout = setTimeout(() => {
+        card.classList.remove('mora-popup-anim');
+        card.classList.add('mora-popout-anim');
+        setTimeout(() => {
+          overlay.classList.remove('opacity-100', 'pointer-events-auto');
+          overlay.classList.add('opacity-0', 'pointer-events-none');
+        }, 300);
+      }, 2000);
+    }
+
+    function triggerRockyTheme() {
+      const audio = document.getElementById('rockyAudio');
+      const overlay = document.getElementById('rockyOverlay');
+      const card = document.getElementById('rockyCard');
+
+      if (rockyTimeout) clearTimeout(rockyTimeout);
+
+      // Show glowing boxing glove popup
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100', 'pointer-events-auto');
+      card.classList.remove('mora-popout-anim');
+      card.classList.add('mora-popup-anim');
+
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(err => console.log("Audio autoplay restricted by browser:", err));
+      }
+
+      rockyTimeout = setTimeout(() => {
+        card.classList.remove('mora-popup-anim');
+        card.classList.add('mora-popout-anim');
+        setTimeout(() => {
+          overlay.classList.remove('opacity-100', 'pointer-events-auto');
+          overlay.classList.add('opacity-0', 'pointer-events-none');
+        }, 300);
+      }, 3500);
+    }
+
+    function triggerHeartRain() {
+      const colors = ['❤️', '💖', '💕', '💗', '💓', '💝'];
+      const duration = 5000;
+      const startTime = Date.now();
+
+      const interval = setInterval(() => {
+        if (Date.now() - startTime > duration) {
+          clearInterval(interval);
+          return;
+        }
+
+        for (let i = 0; i < 4; i++) {
+          const heart = document.createElement('div');
+          heart.className = 'falling-heart';
+          heart.innerText = colors[Math.floor(Math.random() * colors.length)];
+          heart.style.left = Math.random() * 100 + 'vw';
+          heart.style.fontSize = (Math.random() * 20 + 20) + 'px';
+          heart.style.animationDuration = (Math.random() * 2 + 3) + 's';
+          document.body.appendChild(heart);
+
+          setTimeout(() => {
+            heart.remove();
+          }, 5000);
+        }
+      }, 150);
+    }
+
+    function triggerWeedRain() {
+      const duration = 5000;
+      const startTime = Date.now();
+
+      const interval = setInterval(() => {
+        if (Date.now() - startTime > duration) {
+          clearInterval(interval);
+          return;
+        }
+
+        for (let i = 0; i < 4; i++) {
+          const weed = document.createElement('div');
+          weed.className = 'falling-heart';
+          weed.innerText = '🌿';
+          weed.style.left = Math.random() * 100 + 'vw';
+          weed.style.fontSize = (Math.random() * 20 + 20) + 'px';
+          weed.style.animationDuration = (Math.random() * 2 + 3) + 's';
+          document.body.appendChild(weed);
+
+          setTimeout(() => {
+            weed.remove();
+          }, 5000);
+        }
+      }, 150);
+    }
+
+    // Lightbox Fullscreen Controls
+    function openLightbox(imgSrc, caption) {
+      const lb = document.getElementById('imageLightbox');
+      const img = document.getElementById('lightboxImg');
+      const cap = document.getElementById('lightboxCaption');
+      
+      img.src = imgSrc;
+      cap.innerText = caption || 'Foto a Schermo Intero';
+      
+      lb.classList.remove('opacity-0', 'pointer-events-none');
+      lb.classList.add('opacity-100', 'pointer-events-auto');
+    }
+
+    function openLightboxFromDrawer() {
+      const src = document.getElementById('drawerImage').src;
+      const title = document.getElementById('drawerTitle').innerText;
+      if (src) openLightbox(src, title);
+    }
+
+    function closeLightbox() {
+      const lb = document.getElementById('imageLightbox');
+      lb.classList.add('opacity-0', 'pointer-events-none');
+      lb.classList.remove('opacity-100', 'pointer-events-auto');
+    }
+
+    const uiTranslations = {
+      it: {
+        navTitle: "Tour Turchia 2026",
+        navSub: "Bursa • İzmir & Efeso • Istanbul",
+        labelViewMap: "Mappa",
+        labelViewList: "Cibo",
+        labelViewTrans: "Trasporti",
+        langLabel: "IT",
+        lblMobMap: "Mappa",
+        lblMobList: "Tappe (15)",
+        tabAll: "Tutti",
+        tabBursa: "Bursa",
+        tabIzmir: "İzmir",
+        tabIstanbul: "Istanbul",
+        legendTitle: "Itinerario",
+        lblNextRoute: "Tratta Successiva",
+        labelAbout: "Dettagli & Esperienza",
+        labelHighlight: "Per i Ragazzi",
+        labelFood: "Cibo & Specialità",
+        waTextMap: "Hai un'idea? Scrivimi su WhatsApp",
+        waTextList: "Suggerisci su WhatsApp (+90 551 191 16 93)",
+        footerSuggestionNote: "Vuoi aggiungere un piatto o un locale che hai visto online?",
+        filterHeading: "Cibo Turco da Provare",
+        lblCatFilter: "Tipo di Cibo",
+        lblPriceFilter: "Fascia di Prezzo",
+        optAllCats: "Tutti i Cibi",
+        optSavory: "🍖 Piatti Salati & Kebap",
+        optSweet: "🍯 Dolci & Dessert",
+        optStreet: "🥪 Street Food & Spuntini",
+        optAllPrices: "Tutte le Fasce (₺, ₺₺, ₺₺₺)",
+        optLowPrice: "₺ Economico / Street Food",
+        optMidPrice: "₺₺ Medio",
+        optHighPrice: "₺₺₺ Ristorante / Piatto Ricco",
+        whereToTry: "Dove provarlo",
+        modalTitle: "Benvenute famiglie Bergero e Borrio!",
+        modalText: "Sono felicissimo che verrete presto in Turchia! Ho preparato questo sito per voi per consultare comodamente cosa mangiare e cosa visitare non appena atterrerete. Continuerò ad aggiungere nuove città, luoghi da non perdere e piatti tipici. Fatemi sapere in anticipo se c'è qualcosa di specifico che volete che cerchi per voi.<br><br>Ci vediamo a Istanbul! &lt;3",
+        modalBtn: "Esplora la Guida 🚀",
+        transTitle: "Trasporti & Logistica (In Sviluppo)",
+        transDesc: "In questa sezione spiegheremo come ci muoveremo all'interno delle varie città. Dalla tessera della metropolitana (Istanbulkart) ai traghetti sul Bosforo, fino ai dolmuş e ai taxi. Stiamo preparando tutto il necessario per viaggiare senza pensieri!",
+        btnPrev: "Prec.",
+        btnNext: "Succ."
+      },
+      en: {
+        navTitle: "Turkey Tour 2026",
+        navSub: "Bursa • Izmir & Ephesus • Istanbul",
+        labelViewMap: "Map View",
+        labelViewList: "Food Hub",
+        labelViewTrans: "Transport",
+        langLabel: "EN",
+        lblMobMap: "Map",
+        lblMobList: "Stops (15)",
+        tabAll: "All",
+        tabBursa: "Bursa",
+        tabIzmir: "İzmir",
+        tabIstanbul: "Istanbul",
+        legendTitle: "Itinerary Legend",
+        lblNextRoute: "Next Waypoint Leg",
+        labelAbout: "Details & Experience",
+        labelHighlight: "Vibe for You",
+        labelFood: "Food & Must-Tastes",
+        waTextMap: "Got an idea? Chat on WhatsApp",
+        waTextList: "Share Suggestion on WhatsApp (+90 551 191 16 93)",
+        footerSuggestionNote: "Want to suggest a dish or spot you saw online?",
+        filterHeading: "Turkish Dishes to Try",
+        lblCatFilter: "Food Category",
+        lblPriceFilter: "Price Tier",
+        optAllCats: "All Dishes",
+        optSavory: "🍖 Savory Meals & Kebabs",
+        optSweet: "🍯 Sweets & Desserts",
+        optStreet: "🥪 Street Food & Fast Bites",
+        optAllPrices: "All Tiers (₺, ₺₺, ₺₺₺)",
+        optLowPrice: "₺ Budget / Street Food",
+        optMidPrice: "₺₺ Medium",
+        optHighPrice: "₺₺₺ Restaurant / Feast",
+        whereToTry: "Where to try",
+        modalTitle: "Hey Bergero and Borrio family!",
+        modalText: "I'm so glad that you will be coming to Turkey soon! I prepared this website for you guys so you can check what to eat and see from anywhere once you arrive. I will keep adding more cities, sights, and foods. Let me know in advance if there is anything specific you want me to search for.<br><br>See you guys in Istanbul! &lt;3",
+        modalBtn: "Start Exploring 🚀",
+        transTitle: "Transport & Logistics (In Development)",
+        transDesc: "In this section, we will explain how we will move around the cities. From the subway card (Istanbulkart) to Bosphorus ferries, dolmuş, and taxis. We are preparing everything you need for stress-free travel!",
+        btnPrev: "Prev",
+        btnNext: "Next"
+      }
+    };
+
+    // 15 Verified Waypoints (Including Şirince Town)
+    const stops = [
+      {
+        id: "saw", phase: "bursa", tag: "hub", order: 1, lat: 40.8986, lng: 29.3092,
+        image: "https://cdn.istanbulticaretgazetesi.com/storage/1200x675/648/osmangazi-koprusu-ile-10-yilda-200-milyar-lirayi-asan-tasarruf-saglandi-1782912319.webp",
+        it: {
+          title: "Aeroporto Sabiha Gökçen (SAW) & Ponte Osmangazi", sub: "Inizio Road Trip verso Bursa",
+          desc: "Atterraggio sul lato asiatico. Si imbocca subito l'autostrada O-5 attraversando il monumentale Ponte Osmangazi sospeso sul Mar di Marmara per arrivare a Bursa in circa 1h 30m.",
+          young: "Road trip spettacolare sul 4° ponte sospeso più lungo al mondo.",
+          food: "Simit caldo con sesamo e tè turco nelle stazioni panoramiche."
+        },
+        en: {
+          title: "Sabiha Gökçen Airport (SAW) & Osmangazi Bridge", sub: "Road trip start across the gulf",
+          desc: "Landing on the Asian side. Drive directly onto highway O-5 across the massive Osmangazi suspension bridge to reach Bursa in 1.5 hours.",
+          young: "Scenic drive across the 4th longest suspension bridge on earth.",
+          food: "Warm freshly baked sesame simit and Turkish tea at rest stops."
+        }
+      },
+      {
+        id: "teleferik", phase: "bursa", tag: "bursa", order: 2, lat: 40.1583, lng: 29.0911,
+        image: "https://belediye-assets.s3.eu-central-1.amazonaws.com/public/files/places/images/684a77c458c38.webp",
+        it: {
+          title: "Funivia di Uludağ (Teleferik) & Trekking", sub: "Salita panoramica di 9 km & escursione nei boschi alpini",
+          desc: "Una delle funivie continue più lunghe d'Europa (9 km). Si sale sopra le foreste di pini fino all'altopiano di Sarıalan (1.800m) per un trekking panoramico verso le cascate Softaboğan e il belvedere di Bakacak.",
+          young: "Trekking nei boschi con vedute a strapiombo su tutta la vallata.",
+          food: "Sucuk-ekmek (panino con salsiccia speziata grigliata alla brace nei rifugi)."
+        },
+        en: {
+          title: "Uludağ Cable Car (Teleferik) & Forest Hike", sub: "9 km panoramic cableway & alpine plateau trail",
+          desc: "One of the world's longest continuous cable car routes (9 km). Climb over pine forests to the Sarıalan mountain plateau (1,800m) for a scenic forest hike to Softaboğan cascades and Bakacak cliff viewpoint.",
+          young: "Epic mountain forest trail with cliffside panoramic photo spots.",
+          food: "Sucuk-ekmek (grilled spiced Turkish sausage sandwiches in alpine chalets)."
+        }
+      },
+      {
+        id: "cumalikizik", phase: "bursa", tag: "bursa", order: 3, lat: 40.1764, lng: 29.1725,
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSm4I5IwPk5e4nQ9k-d_Dx3-X7X5EzhOuDLrPR2p3G2tA&s",
+        it: {
+          title: "Borgo UNESCO di Cumalıkızık", sub: "Villaggio ottomano intatto di 700 anni & colazione rurale",
+          desc: "Autentico villaggio medievale ottomano con 270 case in legno e pietra dipinte di blu, ocra e viola. Il luogo per eccellenza per provare la 'Serpme Köy Kahvaltısı': una mastodontica colazione rurale contadina.",
+          young: "Vicoletti acciottolati e scorci d'altri tempi perfetti per video e foto.",
+          food: "Gözleme fatto a mano con formaggio fresco ed erbe, confettura di more selvatiche."
+        },
+        en: {
+          title: "UNESCO Village of Cumalıkızık", sub: "700-year-old Ottoman stone village & legendary brunch",
+          desc: "An intact 14th-century Ottoman village at the foot of the mountain with 270 colorful stone and timber houses. Famous for the authentic 'Köy Kahvaltısı' (traditional multi-dish village breakfast spread).",
+          young: "Cobblestone alleys and centuries-old architecture ideal for photos.",
+          food: "Hand-rolled savory gözleme flatbread and wild forest blackberry jams."
+        }
+      },
+      {
+        id: "bursa-center", phase: "bursa", tag: "bursa", order: 4, lat: 40.1830, lng: 29.0617,
+        image: "https://cdn.gundembursa.com/haber/2026/02/26/316336-bursa-da-koza-han-eski-gunlerine-dondu-699feebbb9a39.webp",
+        it: {
+          title: "Grande Moschea (Ulu Cami) & Koza Han", sub: "Caravanserraglio della Seta del 1491 e centro storico",
+          desc: "Visita all'imponente Grande Moschea con 20 cupole e la celebre fontana d'abluzione in marmo situata al coperto. Subito accanto sorge il Koza Han (1491), cortile storico dei mercanti di seta all'ombra di platani secolari.",
+          young: "Bere caffè turco cotto sulla sabbia nei cortili storici ombreggiati.",
+          food: "L'autentico İskender Kebab con burro fuso sfrigolante versato al tavolo."
+        },
+        en: {
+          title: "Grand Mosque (Ulu Cami) & Koza Han (Silk Market)", sub: "15th-century silk caravansary and historic downtown",
+          desc: "Visit the 1399 Grand Mosque featuring 20 domes and an indoor ablution fountain beneath a skylight. Next door lies Koza Han (1491), the legendary silk caravansary courtyard surrounded by ancient trees.",
+          young: "Sipping authentic sand-brewed Turkish coffee in antique stone courtyards.",
+          food: "The original 1867 Bursa İskender Kebab with sizzling hot browned butter."
+        }
+      },
+      {
+        id: "nazarkoy", phase: "izmir", tag: "izmir", order: 5, lat: 38.3894, lng: 27.4728,
+        image: "https://izgazetenet.teimg.com/izgazete-net/uploads/2025/09/nazarkoy-3.webp",
+        it: {
+          title: "Nazarköy (Il Villaggio degli Occhi di Vetro)", sub: "Fornaci artigianali nel canyon & amuleti tradizionali",
+          desc: "Situato in una gola naturale vicino a Smirne, questo borgo è il cuore della lavorazione del vetro turco dove i maestri vetrai forgiano a mano nei forni a legna gli occhi blu contro il malocchio (Nazar Boncuğu).",
+          young: "Vedere il vetro incandescente modellato dal vivo e sentieri nel canyon.",
+          food: "Gözleme caldo con formaggio dell'Egeo e limonata fresca alla menta."
+        },
+        en: {
+          title: "Nazarköy (The Glass Evil Eye Village)", sub: "Artisan glass furnaces in a mountain canyon",
+          desc: "A picturesque village tucked in a canyon near Izmir where master glassmakers melt recycled glass in wood-fired stone ovens to craft authentic blue evil-eye talismans.",
+          young: "Watch glowing molten glass blown by open fire & browse artisan shops.",
+          food: "Freshly made flatbreads and iced homemade mint lemonade."
+        }
+      },
+      {
+        id: "ephesus", phase: "izmir", tag: "izmir", order: 6, lat: 37.9408, lng: 27.3415,
+        image: "https://kusadasitatilevi.com/uploads/thumbnail/ephesus-roads-1711195132.webp",
+        it: {
+          title: "Antica Efeso & Biblioteca di Celso", sub: "La grandiosa metropoli romana del Mediterraneo",
+          desc: "Una delle città antiche più straordinarie al mondo: si cammina sulla Via dei Cureti in marmo, si ammira la monumentale facciata della Biblioteca di Celso e il teatro da 25.000 spettatori.",
+          young: "Architettura classica monumentale di grande impatto visivo e fotografico.",
+          food: "Fichi dolci di Selçuk, formaggi di capra e piatti freddi all'olio d'oliva."
+        },
+        en: {
+          title: "Ancient Ephesus & Library of Celsus", sub: "The best-preserved classical Roman city",
+          desc: "Walk along the marble Curetes street down to the two-story Library of Celsus and the 25,000-seat amphitheater where Saint Paul preached.",
+          young: "Colossal marble columns and dramatic classical photography angles.",
+          food: "Fresh local Selçuk figs, Aegean olive oils, and cold mezes."
+        }
+      },
+      {
+        id: "mary", phase: "izmir", tag: "izmir", order: 7, lat: 37.9125, lng: 27.3330,
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRWnbz3kVnVYgwhOwYm39NsVGA1DvSqBjk_zz_nOnhRvQmxVW-YGu6X7KI&s=10",
+        it: {
+          title: "Casa della Vergine Maria (Meryem Ana)", sub: "Santuario di silenzio e pinete sulla collina di Bülbül",
+          desc: "Un'oasi di profonda quiete tra i boschi collinari dove, secondo la tradizione, Maria visse i suoi ultimi anni. Luogo sacro visitato da milioni di persone e da molteplici Papi.",
+          young: "Lasciare messaggi e desideri sul celebre muro votivo in pietra.",
+          food: "Acqua pura dalle sorgenti naturali della collina."
+        },
+        en: {
+          title: "House of the Virgin Mary (Meryem Ana)", sub: "Peaceful stone sanctuary in the forested hills",
+          desc: "A tranquil stone chapel hidden in pine-scented hills where the Virgin Mary is believed to have spent her final years, surrounded by gardens.",
+          young: "Tying personal wishes and hopes to the iconic stone wishing wall.",
+          food: "Crisp mountain spring water from the natural stone fountains."
+        }
+      },
+      {
+        id: "sirince", phase: "izmir", tag: "izmir", order: 8, lat: 37.9431, lng: 27.4278,
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScxah5U6l5X9w_uqC48VumdnssWttDvN9jm7J88Pck0VlFDgzMFRfRKPk&s=10",
+        it: {
+          title: "Borgo Storico di Şirince & Degustazione Vini", sub: "Antico villaggio greco tra le colline e cantine artigianali",
+          desc: "Incantevole borgo storico sulle colline sopra Selçuk, famoso per le case in pietra con tetti rossi, i vicoli acciottolati e la millenaria tradizione vinicola. Celebre per le degustazioni di vini artigianali alla frutta (mora, melograno, mirtillo).",
+          young: "Atmosfera fiabesca tra vicoli pittoreschi e degustazioni di vini dolci locali.",
+          food: "Vino di frutta artigianale di Şirince e dolci tipici locali."
+        },
+        en: {
+          title: "Historic Village of Şirince & Wine Tasting", sub: "Picturesque hillside Greek village and artisan wine cellars",
+          desc: "A charming historic hilltop village above Selçuk known for its red-roofed stone houses, cobbled alleys, and centuries-old winemaking tradition. Famous for tastings of local artisan fruit wines (blackberry, pomegranate, blueberry).",
+          young: "Fairy-tale village views and sweet local fruit wine tastings.",
+          food: "Artisanal Şirince fruit wines and local regional treats."
+        }
+      },
+      {
+        id: "pamucak", phase: "izmir", tag: "izmir", order: 9, lat: 37.9333, lng: 27.2764,
+        image: "https://d1kn6yj76m9zby.cloudfront.net/Pamucak/pamucak_3.jpeg",
+        it: {
+          title: "Spiaggia di Pamucak & Costa Egea", sub: "Pomeriggio di mare, sole e nuotate al tramonto",
+          desc: "Ampia spiaggia di sabbia dorata lunga 5 km bagnata dalle acque calde dell'Egeo. Il punto ideale per rilassarsi, prendere il sole e nuotare dopo la visita a Efeso.",
+          young: "Beach volley, tuffi in mare e musica nei beach club sul bagnasciuga.",
+          food: "Calamari fritti dorati, pesce spada alla griglia e meze marinari."
+        },
+        en: {
+          title: "Pamucak Beach & Aegean Coast", sub: "Afternoon sea swim and sunset relaxing",
+          desc: "A wide 5 km expanse of golden sand and warm Aegean waters. The perfect spot to unwind and swim right after exploring the ruins of Ephesus.",
+          young: "Beach volleyball, music, seaside lounging, and sunset swimming.",
+          food: "Crispy fried calamari, grilled Aegean sea bass, and chilled mezes."
+        }
+      },
+      {
+        id: "kordon", phase: "izmir", tag: "izmir", order: 10, lat: 38.4189, lng: 27.1287,
+        image: "https://gazeterizecom.teimg.com/gazeterize-com/uploads/2025/03/agency/igf/izmir-kordon-hem-guvenli-hem-daha-yesil.webp",
+        it: {
+          title: "İzmir Kordon & Piazza Konak", sub: "Lungomare vivace, movida universitaria e Kemeraltı",
+          desc: "Il lungomare più energico della Turchia: al tramonto migliaia di giovani si ritrovano sui prati del Kordon. Visita alla celebre Torre dell'Orologio del 1901 in Piazza Konak e nei vicoli storici di Kemeraltı.",
+          young: "Pub con musica dal vivo, locali sul mare e atmosfera rilassata ad Alsancak.",
+          food: "Boyoz caldo ripieno di formaggio o cioccolato e Kumru tostato."
+        },
+        en: {
+          title: "İzmir Kordon & Konak Clock Tower", sub: "Lively seafront lawn, nightlife & historic bazaar",
+          desc: "Izmir's famous coastal promenade. Young locals gather on the grass by the Aegean at sunset. Visit the 1901 Ottoman Clock Tower and explore Kemeraltı bazaar.",
+          young: "Live music venues, indie cafes, and seaside nightlife in Alsancak.",
+          food: "Freshly baked Izmir Boyoz pastries and loaded hot Kumru sandwiches."
+        }
+      },
+      {
+        id: "sultanahmet", phase: "istanbul", tag: "istanbul", order: 11, lat: 41.0086, lng: 28.9802,
+        image: "https://www.justistanbultours.com/public/content/images/Tours/51/e45ee7ce7e88149af8dd32b27f9512ce1729066096.webp",
+        it: {
+          title: "Santa Sofia & Piazza Sultanahmet", sub: "Il millenario cuore bizantino e ottomano",
+          desc: "La grandiosa basilica di Santa Sofia costruita nel 537 d.C. con la sua cupola mozzafiato, affacciata sui giardini imperiali dell'Ippodromo e della Moschea Blu.",
+          young: "Scorci monumentali e foto iconiche della piazza tra le fontane illuminate.",
+          food: "Tarihi Sultanahmet Köftesi (polpettine speziate) con pane pita caldo."
+        },
+        en: {
+          title: "Hagia Sophia & Sultanahmet Square", sub: "The millenary Byzantine and Ottoman heart",
+          desc: "The monumental Hagia Sophia (537 AD) with its colossal floating dome, standing across from the imperial gardens and Blue Mosque.",
+          young: "Monumental architecture and iconic photos across the illuminated fountains.",
+          food: "Tarihi Sultanahmet grilled meatballs with pita."
+        }
+      },
+      {
+        id: "yerebatan", phase: "istanbul", tag: "istanbul", order: 12, lat: 41.0084, lng: 28.9779,
+        image: "https://i.gazeteoksijen.com/storage/files/images/2026/04/06/cumhurbaskanligi-aday-ofisi-yerebatan-sarnici-ibbden-alindi-ru6u.jpg",
+        it: {
+          title: "Basilica Cisterna (Yerebatan Sarnıcı)", sub: "Il palazzo d'acqua sotterraneo romano e le Teste di Medusa",
+          desc: "Una maestosa cattedrale sotterranea romana sostenuta da 336 colonne di marmo che emergono dall'acqua, illuminate ad arte con suggestive sculture e le misteriose teste rovesciate di Medusa.",
+          young: "Atmosfera cinematografica e misteriosa, ideale per foto spettacolari.",
+          food: "Tè caldo alla mela nei caffè storici di Yerebatan Caddesi."
+        },
+        en: {
+          title: "Basilica Cistern (Yerebatan Sarnıcı)", sub: "Subterranean Roman water palace & Medusa heads",
+          desc: "A breathtaking underground Roman reservoir supported by 336 marble columns rising from shallow waters, featuring artistic lighting and mysterious carved Medusa heads.",
+          young: "Moody, cinematic reflections and artistic lighting for photos.",
+          food: "Hot Turkish apple tea in the historic cafes above ground."
+        }
+      },
+      {
+        id: "kapalicarsi", phase: "istanbul", tag: "istanbul", order: 13, lat: 41.0107, lng: 28.9680,
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYKTsQ6GGTMUB6tg0fIRIzlhSiKYlsysyv1L8adGOlAb3fUYDyGb83RiI&s=10",
+        it: {
+          title: "Gran Bazar (Kapalıçarşı)", sub: "Il labirinto coperto più antico del mondo (4.000 botteghe)",
+          desc: "Famoso mercato coperto del 1461 con oltre 60 strade coperte. Un paradiso per perdersi tra ceramiche dipinte a mano, lanterne di vetro colorato, pelletteria e gioielli in oro.",
+          young: "L'arte della contrattazione e shopping di souvenir e capi vintage.",
+          food: "Caffè turco tradizionale cotto sulla sabbia rovente nei vicoli interni."
+        },
+        en: {
+          title: "Grand Bazaar (Kapalıçarşı)", sub: "World's oldest covered maze with 4,000 artisan shops",
+          desc: "Legendary 1461 covered market spanning over 60 vaulted alleys. An exhilarating wonderland of handmade Iznik ceramics, mosaic lamps, leather, and jewelry.",
+          young: "Bargaining with friendly local merchants and thrift/souvenir hunting.",
+          food: "Traditional sand-brewed hot Turkish coffee inside hidden courtyards."
+        }
+      },
+      {
+        id: "misircarsisi", phase: "istanbul", tag: "istanbul", order: 14, lat: 41.0166, lng: 28.9704,
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlgEvpllhRbsnBCa2VrgOpDq5GoOz9puz-hw1VYxRuNg&s",
+        it: {
+          title: "Bazar delle Spezie (Mısır Çarşısı) & Eminönü", sub: "Profumi d'Oriente, piramidi di spezie e dolci tradizionali",
+          desc: "Situato sul Corno d'Oro a Eminönü, questo storico mercato del 1664 trabocca di spezie rare, zafferano, tisane aromatiche, frutta secca e le migliori varietà di Lokum artigianale.",
+          young: "Assaggiare decine di tipi diversi di delizie turche e tè al melograno.",
+          food: "Lokum fresco al pistacchio tagliato al coltello e formaggi tipici."
+        },
+        en: {
+          title: "Spice Bazaar (Mısır Çarşısı) & Eminönü", sub: "Fragrant pyramids of spices, teas, and sweets",
+          desc: "Dating back to 1664 on the Golden Horn waterfront, filled with vibrant mountains of saffron, herbal infusions, roasted nuts, and fresh Turkish delights.",
+          young: "Free sweet tastings of different pistachio and pomegranate delights.",
+          food: "Knife-cut artisanal Turkish delight and freshly roasted nuts."
+        }
+      },
+      {
+        id: "galata", phase: "istanbul", tag: "istanbul", order: 15, lat: 41.0256, lng: 28.9741,
+        image: "https://images.istanbultours.com/uploads/1920x1080/1303a9fd-aece-47a2-96bf-fdd33287e4ab.webp",
+        it: {
+          title: "Crociera sul Bosforo & Torre di Galata", sub: "In barca tra Europa e Asia e il quartiere genovese",
+          desc: "Traghetto al tramonto navigando tra due continenti, ammirando fortezze medievali e palazzi sull'acqua. Salita alla Torre di Galata (costruita dai Genovesi nel 1348) per la vista a 360° sulla città.",
+          young: "Caffè specialty, boutique vintage e locali serali a Karaköy e Galata.",
+          food: "Balık-ekmek (panino col pesce alla griglia) al ponte e San Sebastian Cheesecake."
+        },
+        en: {
+          title: "Bosphorus Cruise & Galata Tower", sub: "Cruising between continents and exploring the Genoese quarter",
+          desc: "Cruise the Bosphorus strait between Europe and Asia past waterfront palaces. Ascend the 1348 Genoese Galata Tower for 360° skyline views, then head into Karaköy.",
+          young: "Specialty coffee roasteries, street art, and indie nightlife in Karaköy.",
+          food: "Grilled fish sandwiches (Balık-ekmek) at Galata Bridge and burnt cheesecake."
+        }
+      }
+    ];
+
+    // Estimated Leg Data Between Stops (Time, Distance & Description for Clicks)
+    const routeLegInfo = [
+      { from: 1, to: 2, time_it: "1h 35m in auto (135 km via O-5)", time_en: "1h 35m drive (135 km via O-5)", mode: "🚗 Autostrada O-5 & Ponte Osmangazi" },
+      { from: 2, to: 3, time_it: "25 min in funivia + 20 min in auto (14 km)", time_en: "25 min cable car + 20 min drive (14 km)", mode: "🚡 Teleferik & Strada Montana" },
+      { from: 3, to: 4, time_it: "20 min in auto (12 km)", time_en: "20 min drive (12 km)", mode: "🚗 Strada Urbana Bursa" },
+      { from: 4, to: 5, time_it: "3h 15m in auto (315 km via O-5)", time_en: "3h 15m drive (315 km via O-5)", mode: "🚗 Autostrada O-5 verso l'Egeo" },
+      { from: 5, to: 6, time_it: "55 min in auto (75 km)", time_en: "55 min drive (75 km)", mode: "🚗 Strada Statale D550" },
+      { from: 6, to: 7, time_it: "12 min in auto (8 km salita)", time_en: "12 min drive (8 km uphill)", mode: "🚗 Salita Collina Bülbül" },
+      { from: 7, to: 8, time_it: "25 min in auto (19 km)", time_en: "25 min drive (19 km)", mode: "🚗 Strada Panoramica Collinare verso Şirince" },
+      { from: 8, to: 9, time_it: "20 min in auto (15 km discesa)", time_en: "20 min drive (15 km downhill)", mode: "🚗 Discesa verso la Costa Egea" },
+      { from: 9, to: 10, time_it: "1h 05m in auto (82 km)", time_en: "1h 05m drive (82 km)", mode: "🚗 Autostrada O-31 verso İzmir" },
+      { from: 10, to: 11, time_it: "4h 45m in auto (460 km verso Istanbul)", time_en: "4h 45m drive (460 km to Istanbul)", mode: "🚗 Autostrada O-5 & Ritorno a SAW / Istanbul" },
+      { from: 11, to: 12, time_it: "3 min a piedi (250 metri)", time_en: "3 min walk (250 meters)", mode: "🚶 Passeggiata a Sultanahmet" },
+      { from: 12, to: 13, time_it: "10 min a piedi (850 metri)", time_en: "10 min walk (850 meters)", mode: "🚶 Passeggiata Divanyolu" },
+      { from: 13, to: 14, time_it: "8 min a piedi in discesa (700 metri)", time_en: "8 min walk downhill (700 meters)", mode: "🚶 Discesa verso Eminönü" },
+      { from: 14, to: 15, time_it: "15 min a piedi sul ponte o 5 min tram T1", time_en: "15 min walk across bridge or 5 min tram T1", mode: "🚶 Attraversamento Ponte di Galata" }
+    ];
+
+    // Complete Food Database (Including Turkish Fruit Wine)
+    const catalogItems = [
+      {
+        id: "c-wine", category: "savory", price: "₺₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbAuT1dezb1vFlL88439OEoLxGgouSDvUV4Cn1zY1IZgCAWTC9Cact-aA&s=10",
+        it: { title: "Vino di Frutta Artigianale di Şirince", badge: "Specialità di Şirince", desc: "Tipico vino dolce e aromatico prodotto artigianalmente nelle cantine storiche di Şirince con frutti locali come more, melograno, mirtilli e pesche.", spot: "Cantine storiche del villaggio di Şirince" },
+        en: { title: "Şirince Artisanal Fruit Wine", badge: "Şirince Specialty", desc: "Traditional sweet and aromatic fruit wine crafted in the historic cellars of Şirince using local berries, pomegranate, blueberries, and peaches.", spot: "Historic wine cellars in Şirince village" }
+      },
+      {
+        id: "c-pide", category: "savory", price: "₺₺₺", image: "https://cinaraltikebapcisi.com.tr/tema/genel/uploads/haberler/kusbasili-pide-tarifi.webp",
+        it: { title: "Kuşbaşılı & Kaşarlı Pide (Pide al Forno)", badge: "Piatto Ricco al Forno", desc: "La barchetta di pasta lievitata cotta al forno a legna, farcita con teneri bocconcini di manzo marinato, formaggio fuso, peperoni dolci.", spot: "Pideciler tradizionali in tutta la Turchia" },
+        en: { title: "Kuşbaşılı & Kaşarlı Pide (Boat-Shaped Pizza)", badge: "Wood-Fired Crust", desc: "Boat-shaped sourdough crust loaded with tender spiced beef chunks, melted cheese, and roasted peppers.", spot: "Classic pide bakeries across Turkey" }
+      },
+      {
+        id: "c-iskender", category: "savory", price: "₺₺₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMKlGBQzX9cf6OiqUHDOVo9zAe5OpXDZhHGO5OtmckPw&s=10",
+        it: { title: "İskender Kebab Originale", badge: "Grande Piatto Tradizionale", desc: "Sottili fettine di carne döner adagiate su pane pide caldo a cubetti, ricoperte di salsa di pomodoro fresca, yogurt denso e una colata di burro fuso.", spot: "Kebapçı İskender (Mavi Dükkan 1867 Bursa)" },
+        en: { title: "Original Bursa İskender Kebab", badge: "Turkish Masterpiece", desc: "Tender carved döner lamb layered over warm pide cubes, fresh tomato sauce, sheep milk yogurt, and sizzling browned butter.", spot: "Historic Mavi Dükkan in Bursa" }
+      },
+      {
+        id: "c-patlican", category: "savory", price: "₺₺₺", image: "https://i.nefisyemektarifleri.com/2022/05/29/orijinal-antep-usulu-patlican-kebabi-4.jpg",
+        it: { title: "Patlıcan Kebabı (Kebab di Melanzane)", badge: "Specialità alla Brace", desc: "Fettine di melanzane alternate a saporite polpette di carne speziata, infilzate in uno spiedo e arrostite lentamente alla brace o al forno a legna.", spot: "Ristoranti di Kebab e Ocakbaşı tradizionali" },
+        en: { title: "Patlıcan Kebabı (Eggplant Kebab)", badge: "Char-Grilled Specialty", desc: "Sliced eggplants alternating with savory spiced meatballs, skewered and slow-roasted over charcoal or in a wood-fired oven.", spot: "Kebab houses and traditional Ocakbaşı grills" }
+      },
+      {
+        id: "c-guvec", category: "savory", price: "₺₺₺", image: "https://cdn.myikas.com/images/a4d134f8-b159-4faf-84d4-b88993f70147/cd585add-b824-48b1-99d9-a39f5a79fa9a/image_1080.webp",
+        it: { title: "Etli Güveç (Stufato in Terracotta)", badge: "Cottura Lenta", desc: "Teneri bocconcini di manzo o agnello cotti lentamente per ore in una pentola di argilla sigillata insieme a pomodori, aglio e verdure fresche.", spot: "Esnaf Lokantası (Trattorie tradizionali)" },
+        en: { title: "Etli Güveç (Clay Pot Meat Stew)", badge: "Slow-Cooked Magic", desc: "Tender beef or lamb chunks slow-cooked for hours in a sealed clay pot alongside fresh tomatoes, garlic, and vegetables.", spot: "Traditional Esnaf Lokantası and meat restaurants" }
+      },
+      {
+        id: "c-adana", category: "savory", price: "₺₺₺", image: "https://cdn.karaca.com/cms/adana_kebap_tarifi_78bbe79b79.webp",
+        it: { title: "Adana Kebap alla Brace su Spada", badge: "Il Grande Classico", desc: "Carne d'agnello tritata a mano con spezie e peperoncino, grigliata su grandi spiedi piatti sui carboni ardenti. Servita su pane lavaş.", spot: "Ocakbaşı tradizionali a Beyoğlu, Kadıköy e Bursa" },
+        en: { title: "Adana Char-Grilled Skewer Kebab", badge: "The Classic Kebab", desc: "Hand-minced spicy lamb kebab grilled on flat iron swords over open embers. Served over warm lavaş with sumac onions.", spot: "Authentic Ocakbaşı grill houses across Turkey" }
+      },
+      {
+        id: "c-manti", category: "savory", price: "₺₺", image: "https://assets.tmecosys.com/image/upload/t_web_rdp_recipe_584x480/img/recipe/ras/Assets/e6ec567b4de47816557b45c4247cc323/Derivates/6dbac756f10d372c8a556b9ef923a5c4f4134eee.jpg",
+        it: { title: "Kayseri Mantısı (Ravioli Turchi)", badge: "Pasta Fresca Turca", desc: "Piccoli e deliziosi ravioli di carne fatti a mano, bolliti e serviti con abbondante yogurt all'aglio, burro fuso al peperoncino e menta secca.", spot: "Locali specializzati in Mantı (Mantıcı) ovunque" },
+        en: { title: "Kayseri Mantısı (Turkish Dumplings)", badge: "Turkish Fresh Pasta", desc: "Tiny, handmade meat-stuffed dumplings, boiled and smothered in garlic yogurt, drizzled with spicy melted butter and dried mint.", spot: "Specialty Mantı houses (Mantıcı) everywhere" }
+      },
+      {
+        id: "c-breakfast", category: "savory", price: "₺₺₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3Id57rhh9MxU55xFov_DLsrJY1qg6mKH2NuWTeSKd_xywzLDOMYYsG_3T&s=10",
+        it: { title: "Serpme Türk Kahvaltısı", badge: "Banchetto Mattutino", desc: "Tavolata sontuosa con oltre 20 piattini: formaggi locali, olive, miele con kaymak (panna rappresa), uova con sucuk caldo, börek e tè infinito.", spot: "Cumalıkızık (Bursa) o caffè lungo il Bosforo" },
+        en: { title: "Serpme Turkish Breakfast Feast", badge: "Ultimate Morning Spread", desc: "A massive banquet of small plates: artisanal cheeses, olives, honey with clotted cream (kaymak), eggs with spicy sausage, and unlimited tea.", spot: "Cumalıkızık village or seaside Bosphorus cafes" }
+      },
+      {
+        id: "c-kellepaca", category: "savory", price: "₺₺", image: "https://kitapdiyari.com.tr/wp-content/uploads/2025/12/kelle-paca-corbasiniz.webp",
+        it: { title: "Kelle Paça Çorbası (Zuppa Ricostituente)", badge: "Zuppa Tradizionale", desc: "Zuppa ricca e corroborante a base di carne e brodo denso d'agnello, condita al tavolo con salsa all'aglio fresco e aceto o limone.", spot: "Çorbacı storici aperti 24h a Istanbul e Bursa" },
+        en: { title: "Kelle Paça (Hearty Meat Soup)", badge: "Traditional Soup", desc: "Rich, collagen-packed slow-simmered lamb soup served with crushed garlic vinegar sauce and red pepper butter.", spot: "Historic 24/7 soup houses" }
+      },
+      {
+        id: "c-kunefe", category: "sweet", price: "₺₺₺", image: "https://sur75kunefe.com/resimler/urunler/resim2/16908036131/citir-hasir-kunefe-resim2-17632895965.webp",
+        it: { title: "Künefe Caldo con Formaggio Filante", badge: "Dessert al Forno Caldo", desc: "Fili croccanti di pasta kadaif dorati al burro, con cuore di formaggio fresco filante non salato, cosparso di pistacchi e sciroppo zuccherino.", spot: "Ristoranti e pasticcerie specializzate a Istanbul e Bursa" },
+        en: { title: "Hot Cheese Künefe", badge: "Warm Dessert", desc: "Crispy buttery shredded pastry with a molten unsalted cheese core, soaked in syrup and pistachios.", spot: "Künefe specialty parlors across Turkey" }
+      },
+      {
+        id: "c-kadayif", category: "sweet", price: "₺₺", image: "https://www.dedekebap.com.tr/yukleme/menu/items/177-dondurmali-fistikli-kadayif.webp",
+        it: { title: "Kadayıf con Pistacchio & Gelato", badge: "Tradizione Croccante", desc: "Nidi dorati di pasta sfilacciata imbevuti di sciroppo dolce, serviti con un generoso panetto di gelato artigianale al latte di capra.", spot: "Pasticcerie storiche a Sirkeci, Beyoğlu e Bursa" },
+        en: { title: "Pistachio Kadayıf with Ice Cream", badge: "Crisp Tradition", desc: "Golden shredded wheat pastry soaked in sweet syrup, served with dense goat milk ice cream.", spot: "Historic sweet shops in Sirkeci & Beyoğlu" }
+      },
+      {
+        id: "c-baklava", category: "sweet", price: "₺₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSueQ8R_XZCe8TV3c0yC1NQreE38wthHg6iTYXY5lE_OznPe2HnC2JzVgU&s=10",
+        it: { title: "Baklava al Pistacchio di Gaziantep", badge: "Il Re dei Dessert", desc: "40 strati di sfoglia imburrata, farciti con pistacchi verdi e sciroppo zuccherino, servita con gelato artigianale.", spot: "Karaköy Güllüoğlu, Hafız Mustafa 1864 e pasticcerie" },
+        en: { title: "Gaziantep Pistachio Baklava", badge: "The King of Sweets", desc: "40 whisper-thin layers of buttered filo packed with green pistachios and hot syrup.", spot: "Karaköy Güllüoğlu, Hafız Mustafa 1864" }
+      },
+      {
+        id: "c-sansebastian", category: "sweet", price: "₺₺", image: "https://www.hacibekirkunc.com/upload/san-sebastian-cheesecake-1-12143.jpg",
+        it: { title: "San Sebastian Cheesecake al Cioccolato", badge: "Must di Galata", desc: "Cheesecake basca cremosissima con crosta caramellata bruciata, servita calda con una cascata di cioccolato al latte belga fuso versato sopra.", spot: "Viyana Kahvesi (sotto la Torre di Galata) e Karaköy" },
+        en: { title: "San Sebastian Cheesecake with Melted Chocolate", badge: "Galata Viral Favorite", desc: "Ultra-creamy burnt Basque cheesecake served warm with melted Belgian milk chocolate.", spot: "Viyana Kahvesi right beneath Galata Tower" }
+      },
+      {
+        id: "c-suthelvasi", category: "sweet", price: "₺", image: "https://i.nefisyemektarifleri.com/2022/05/09/sut-helvasi-muhtesem-bir-lezzet-13.jpg",
+        it: { title: "Bursa Süt Helvası (Budino Bruciacchiato)", badge: "Specialità di Bursa", desc: "Celebre dessert di Bursa. Un morbido budino di latte cotto in forno finché la superficie non si caramella e si bruciacchia, servito caldissimo.", spot: "Ristoranti e pasticcerie storiche nel centro di Bursa" },
+        en: { title: "Bursa Süt Helvası (Baked Milk Pudding)", badge: "Bursa Heritage Sweet", desc: "Famous Bursa dessert. A soft, rich milk pudding baked until the top is deeply caramelized and scorched, served piping hot.", spot: "Historic restaurants and sweet shops in Bursa" }
+      },
+      {
+        id: "c-helva", category: "sweet", price: "₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnrEcTD2AspRvZhJel2KXeqHNNVKuX1nRIJYotJhqaAbYcfFgW5TcQP_-S&s=10",
+        it: { title: "İrmik Helvası (Helva di Semolino)", badge: "Tradizione Casalinga", desc: "Classico dolce al cucchiaio turco a base di semolino tostato nel burro, pinoli e sciroppo dolce. Spesso servito caldo con una pallina di gelato.", spot: "Pasticcerie tradizionali (Helvacı) e locali storici" },
+        en: { title: "İrmik Helvası (Semolina Halva)", badge: "Homestyle Tradition", desc: "Classic Turkish dessert made of butter-roasted semolina, pine nuts, and sweet syrup. Often served warm with a scoop of vanilla ice cream inside.", spot: "Traditional Helvacı sweet shops and historic venues" }
+      },
+      {
+        id: "c-kestane", category: "sweet", price: "₺₺", image: "https://turkiyeturizmansiklopedisi.com/uploads/img/2024/02/28/13524ab7a337c7167a871624f928c2a8f2b06327.webp",
+        it: { title: "Kestane Şekeri (Marron Glacé)", badge: "Dolce Tipico di Bursa", desc: "Castagne giganti raccolte sulle pendici del Monte Uludağ, candite nello sciroppo di zucchero o ricoperte di cioccolato fondente.", spot: "Pasticcerie Kafkas a Bursa e negozi di souvenir" },
+        en: { title: "Kestane Şekeri (Candied Chestnuts)", badge: "Bursa Artisanal Sweet", desc: "Jumbo chestnuts harvested from Mount Uludağ, glazed in sugar syrup or dipped in dark chocolate.", spot: "Kafkas Pastry Shops & sweet bazaars" }
+      },
+      {
+        id: "c-maras", category: "sweet", price: "₺", image: "https://www.iroamly.com/images/dondurma-magic.webp",
+        it: { title: "Maraş Dondurma (Gelato Tradizionale)", badge: "Spettacolo & Gusto", desc: "Il celebre gelato elastico a base di latte di capra e salep (orchidea selvatica), famoso per i divertenti giochi di prestigio dei gelatai in costume.", spot: "Bancarelle a Sultanahmet, Galata, İstiklal Caddesi e Kordon" },
+        en: { title: "Maraş Dondurma (Stretchy Ice Cream)", badge: "Show & Flavor", desc: "Chewy, stretchy Turkish ice cream made with wild orchid root (salep) and goat milk, famous for playful vendor tricks.", spot: "Stalls in Sultanahmet, Galata & Istiklal Street" }
+      },
+      {
+        id: "c-sutlac", category: "sweet", price: "₺", image: "https://d17wu0fn6x6rgz.cloudfront.net/img/w/tarif/mgt/firinda-sutlac-cy5a3404-600.webp",
+        it: { title: "Fırın Sütlaç (Budino di Riso al Forno)", badge: "Dolce al Cucchiaio", desc: "Cremoso budino di latte e riso cotto in ciotole di terracotta con superficie caramellata e dorata al forno.", spot: "Hafız Mustafa o qualsiasi Muhallebici tradizionale" },
+        en: { title: "Fırın Sütlaç (Baked Rice Pudding)", badge: "Creamy Dessert", desc: "Velvety milk and rice pudding baked in clay bowls with a delicious caramelized charred top.", spot: "Hafız Mustafa or classic pudding parlors" }
+      },
+      {
+        id: "c-kazandibi", category: "sweet", price: "₺₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQaCrds4EVqGQ5G_wJ-aPlFuM9eP8R70lnCMOV1TPrzXjcVNJH0Wd0Um88&s=10",
+        it: { title: "Kazandibi (Budino Caramellato)", badge: "Pasticceria Ottomana", desc: "Budino di latte denso e aromatico con fondo bruno caramellato zuccherino, arrotolato su se stesso.", spot: "Saray Muhallebicisi su İstiklal Caddesi e pasticcerie storiche" },
+        en: { title: "Kazandibi (Caramelized Milk Pudding)", badge: "Ottoman Classic", desc: "Thick milk pudding with a dark, deeply caramelized bottom crust, rolled and served chilled.", spot: "Saray Muhallebicisi on Istiklal Street" }
+      },
+      {
+        id: "c-izmirbomba", category: "sweet", price: "₺", image: "https://izgazetenet.teimg.com/crop/1280x720/izgazete-net/uploads/2024/12/izmir-bomba-diyette-yenir-mi-izmir-bomba-kac-kalori.webp",
+        it: { title: "İzmir Bombası (Bomba al Cioccolato)", badge: "Virale & Golosissimo", desc: "Guscio di frolla sottilissimo come un velo che racchiude un cuore esplosivo di crema di cioccolato e nocciole calda e liquida.", spot: "Çelebi Bakery ad Alsancak (İzmir) e pasticcerie a Istanbul" },
+        en: { title: "İzmir Bomba (Liquid Chocolate Bomb)", badge: "Viral Sensation", desc: "Paper-thin crispy dough shell bursting with hot, flowing hazelnut chocolate praline cream.", spot: "Çelebi Bakery in Alsancak & sweet shops in Istanbul" }
+      },
+      {
+        id: "c-tahinli", category: "sweet", price: "₺", image: "https://belediye-assets.s3.eu-central-1.amazonaws.com/public/files/sub_blogs/images/68c96148020be.webp",
+        it: { title: "Tahinli Pide (Pide Dolce al Sesamo)", badge: "Colazione & Pasticceria", desc: "Focaccia dolce appena sfornata, farcita con una ricca crema calda di tahina pura (pasta di sesamo) e zucchero caramellato in superficie.", spot: "Tarihi Abdal Simit Fırını a Bursa e forni tradizionali" },
+        en: { title: "Tahinli Pide (Sweet Tahini Pastry)", badge: "Breakfast Pastry", desc: "Crispy-edged oven pastry filled with rich, warm sesame tahini cream and lightly caramelized sugar.", spot: "Tarihi Abdal Simit Bakery & traditional bakeries" }
+      },
+      {
+        id: "c-lokum", category: "sweet", price: "₺₺", image: "https://aktasorganik.com/wp-content/uploads/2022/11/lokum.jpg.webp",
+        it: { title: "Lokum Artigianale (Turkish Delight)", badge: "Dolcetto Imperiale", desc: "Morbidi cubetti gelatinosi aromatizzati con acqua di rose, melograno, mastica e ricoperti di pistacchi interi o petali di rosa.", spot: "Hacı Bekir (dal 1777), Bazar delle Spezie e Gran Bazar" },
+        en: { title: "Handcrafted Turkish Delight (Lokum)", badge: "Imperial Candy", desc: "Soft gelatin cubes flavored with rosewater, pomegranate, and packed with whole pistachios.", spot: "Ali Muhiddin Hacı Bekir (since 1777) & Spice Bazaar" }
+      },
+      {
+        id: "c-macun", category: "sweet", price: "₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRHyhhBE1tW9XCEfdyILtYTPkumhyLr8HNjr4_sTdevkSOIBiQvM4TBYns&s=10",
+        it: { title: "Osmanlı Macunu (Pasta di Zucchero)", badge: "Tradizione di Strada", desc: "Coloratissima pasta di zucchero speziata e profumata con erbe aromatiche, avvolta ad arte su uno stecco di legno.", spot: "Piazza Sultanahmet ed eventi storici a Istanbul" },
+        en: { title: "Osmanlı Macunu (Spiced Candy Paste)", badge: "Street Tradition", desc: "Vibrant multi-colored spiced candy paste twirled artfully onto a wooden stick from round brass trays.", spot: "Sultanahmet Square street vendors" }
+      },
+      {
+        id: "c-cantik", category: "street", price: "₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPlkEYIqK-BRRyo0iEC4w0IHK72vwpz3NZSlJtVgb0Kw&s=10",
+        it: { title: "Cantık (Mini-Pizza Tradizionale)", badge: "Street Food Storico", desc: "Piccoli dischi di pasta lievitata cotti nel forno a legna e conditi con carne macinata speziata, cipolle e pomodoro.", spot: "Abdal Fırını nella piazza storica di Abdal (Bursa)" },
+        en: { title: "Cantık (Mini Meat Pizza)", badge: "Historic Street Food", desc: "Wood-fired dough discs baked with seasoned minced meat, tomato, and onion. A local fast bite.", spot: "Abdal Bakery in Abdal Square (Bursa)" }
+      },
+      {
+        id: "c-boyoz", category: "street", price: "₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrFBWetACXaKYxV7O_fX1W5kprhDsxad5vigGrnkivDgXNcGDGcmGS9II&s=10",
+        it: { title: "İzmir Boyoz & Uovo al Forno", badge: "Icona di Smirne", desc: "Sfoglia croccante dorata di origine sefardita (1492), servita bollente insieme a uova sode cotte lentamente al forno con pepe nero.", spot: "Alsancak Dostlar Fırını (sul Kordon a İzmir)" },
+        en: { title: "İzmir Boyoz & Slow-Baked Egg", badge: "Izmir Heritage Food", desc: "Flaky Sephardic puff pastry served hot with roasted black pepper hard-boiled eggs.", spot: "Alsancak Dostlar Bakery on the Kordon (Izmir)" }
+      },
+      {
+        id: "c-midye", category: "street", price: "₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS6wVT6k6v0MiSy0R9T2w199FrXXwJcbNXd23NbA96ZbYTGqunTsk1YuYA&s=10",
+        it: { title: "Midye Dolma (Cozze Ripiene con Riso)", badge: "Street Food di Mare", desc: "Cozze fresche aperte a metà e farcite con riso aromatico cotto con erbe, cannella e pepe, da gustare con tanto succo di limone fresco.", spot: "Bancarelle sul Kordon (İzmir) e lungo il Bosforo (Istanbul)" },
+        en: { title: "Midye Dolma (Stuffed Spiced Mussels)", badge: "Coastal Classic", desc: "Fresh mussels stuffed with herbed aromatic rice. Squeeze fresh lemon directly on top by the sea.", spot: "Waterfront vendors on Izmir Kordon and Istanbul docks" }
+      },
+      {
+        id: "c-balik", category: "street", price: "₺", image: "https://www.yesilpinarbalikcisi.com.tr/upload/hizmet/20260429161953_619e8e33.webp",
+        it: { title: "Balık-Ekmek (Panino col Pesce)", badge: "Classico di Galata", desc: "Filetto di sgombro alla piastra infilato in pane croccante con cipolla rossa fresca, insalata croccante e succo di limone, sul molo del Bosforo.", spot: "Molo di Eminönü e sotto il Ponte di Galata" },
+        en: { title: "Balık-Ekmek (Grilled Fish Sandwich)", badge: "Golden Horn Icon", desc: "Fresh mackerel fillet grilled on flat-tops, tucked inside crusty bread with crisp lettuce, onion, and lemon.", spot: "Eminönü waterfront & Galata Bridge docks" }
+      },
+      {
+        id: "c-lahmacun", category: "street", price: "₺", image: "https://www.yaglarkasap.com/wp-content/uploads/2026/01/adana-lahmacun.jpg.webp",
+        it: { title: "Lahmacun (La 'Pizza' Sottilissima Turca)", badge: "Amatissima da Tutti", desc: "Sfoglia croccante e sottilissima con carne macinata speziata, pomodoro e prezzemolo. Si arrotola con abbondante limone fresco.", spot: "Borsam Taşfırın a Kadıköy o forni tradizionali" },
+        en: { title: "Lahmacun (Crispy Thin Flatbread)", badge: "All-Time Favorite", desc: "Crispy wafer-thin dough topped with spiced minced lamb, sumac, and peppers. Roll it up with lemon.", spot: "Borsam Stone Oven in Kadıköy & pide ovens" }
+      },
+      {
+        id: "c-simittea", category: "street", price: "₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlxOR_DfcWyS_A53G4eeqeez2TVIbjT3NnVSk552cztQVB82qt3MWxT240&s=10",
+        it: { title: "Çay & Simit (Tè Caldo e Ciambella al Sesamo)", badge: "Rituale Quotidiano", desc: "L'abbinamento più amato in assoluto: la ciambella croccante immersa nei semi di sesamo tostati accompagnata da un bicchierino di tè nero caldo a tulipano.", spot: "A bordo di qualsiasi traghetto sul Bosforo e forni di quartiere" },
+        en: { title: "Turkish Tea & Fresh Simit", badge: "Daily Ritual", desc: "Crispy molasses-dipped sesame bagel paired with piping hot Turkish black tea in traditional tulip glasses.", spot: "Onboard any Bosphorus commuter ferry" }
+      },
+      {
+        id: "c-kokorec", category: "street", price: "₺₺", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvaWix26J1nC7ru0S798NnecT_PnVf8Okm9vS36KHFEpbJeXO0GY7vWPfD&s=10",
+        it: { title: "Kokoreç allo Spiedo con Spezie", badge: "Street Food Notturno", desc: "Intestini d'agnello speziati arrostiti lentamente allo spiedo sui carboni ardenti, tritati con pomodori, origano e peperoncino in mezzo pane croccante.", spot: "Şampiyon Kokoreç o locali a Beyoğlu, Kadıköy e Alsancak" },
+        en: { title: "Charcoal-Grilled Spiced Kokoreç", badge: "Late Night King", desc: "Spiced lamb intestines slow-roasted on horizontal charcoal spits, chopped finely with oregano, chili, and stuffed in warm crusty bread.", spot: "Şampiyon Kokoreç or street corners in Beyoğlu" }
+      },
+      {
+        id: "c-islakhamburger", category: "street", price: "₺", image: "https://www.ardaninmutfagi.com/wp-content/uploads/2022/03/islak-hamburger-i.jpg",
+        it: { title: "Islak Hamburger (L'Hamburger Bagnato di Taksim)", badge: "Leggenda Notturna", desc: "Il celebre hamburger di Taksim bagnato in salsa speciale all'aglio e pomodoro, tenuto caldo nei caratteristici box di vetro illuminati a vapore.", spot: "Buffet storici a Taksim Square (Kızılkayalar) a Istanbul" },
+        en: { title: "Islak Hamburger (Taksim Wet Burger)", badge: "Midnight Legend", desc: "The iconic Istanbul street burger soaked in a rich, garlic-infused tomato sauce and kept warm in steam glass boxes.", spot: "Historic street food shops around Taksim Square" }
+      },
+      {
+        id: "c-sirdan", category: "street", price: "₺₺", image: "https://01adanasokaklezzetleri.com.tr/resimler/866-sirdan.webp",
+        it: { title: "Şırdan Dolması (Street Food Tradizionale)", badge: "Specialità Unica", desc: "Stomaco d'agnello farcito con riso speziato, menta, pepe nero e cumino, cotto lentamente in brodo e spolverato di cumino prima di mangiarlo.", spot: "Locali specializzati di Adana a Istanbul e Izmir" },
+        en: { title: "Şırdan Dolması (Stuffed Lamb Specialty)", badge: "Unique Street Bite", desc: "Traditional lamb abomasum stuffed with spiced peppery rice, simmered until tender, and dusted with cumin.", spot: "Authentic Adana street diners" }
+      },
+      {
+        id: "c-tavukdurum", category: "street", price: "₺", image: "https://marinosdoner.com/assets/images/et_acili.webp",
+        it: { title: "Tavuk Dürüm (Döner Arrotolato con Salsa)", badge: "Fast Food Amato", desc: "Pollo speziato cotto allo spiedo verticale, tagliato fine e arrotolato in una sfoglia lavaş calda con patatine, maionese all'aglio e salsa al pomodoro.", spot: "Dürümzade a Beyoğlu o Frango Döner" },
+        en: { title: "Tavuk Dürüm (Spiced Chicken Wrap)", badge: "Street Favorite", desc: "Thinly shaved spit-roasted chicken wrapped in warm flatbread with fries, pickles, garlic sauce, and spices.", spot: "Dürümzade in Beyoğlu or Frango Döner" }
+      }
+    ];
+
+    // Initialize Map centered over Turkey
+    const map = L.map('map', { center: [39.0, 28.0], zoom: 7, zoomControl: false });
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '&copy; Esri, HERE, Garmin', maxZoom: 16
+    }).addTo(map);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16
+    }).addTo(map);
+
+    let polylineSegments = [];
+
+    // Build Individual Interactive Polyline Segments
+    for (let i = 0; i < stops.length - 1; i++) {
+      const p1 = [stops[i].lat, stops[i].lng];
+      const p2 = [stops[i+1].lat, stops[i+1].lng];
+      const leg = routeLegInfo[i];
+
+      const line = L.polyline([p1, p2], {
+        color: '#0ea5e9', weight: 3.5, opacity: 0.9, dashArray: '8, 8', lineCap: 'round', lineJoin: 'round', interactive: false
+      }).addTo(map);
+
+      const hitLine = L.polyline([p1, p2], {
+        color: 'transparent', weight: 22, opacity: 0, interactive: true
+      }).addTo(map);
+
+      polylineSegments.push({ 
+        line, 
+        hitLine,
+        fromOrder: stops[i].order, 
+        legData: leg,
+        stopsIndex: i
+      });
+
+      hitLine.on('click', (e) => {
+        openLegPopup(i, e.latlng, false);
+      });
+    }
+
+    function openLegPopup(index, latlng, isAutoOpen = false) {
+      const leg = polylineSegments[index].legData;
+      const s1 = stops[index];
+      const s2 = stops[index+1];
+      const travelText = currentLang === 'it' ? leg.time_it : leg.time_en;
+
+      const popupContent = `
+        <div class="p-2 space-y-1.5 min-w-[220px]">
+          <div class="flex items-center gap-1.5 text-[10px] text-sky-400 font-bold uppercase tracking-wider">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i> ${currentLang === 'it' ? 'Tempo Stimato' : 'Est. Time'}
+          </div>
+          <div class="text-xs font-extrabold text-white leading-tight">
+            Tappa ${s1.order} &rarr; Tappa ${s2.order}
+          </div>
+          <div class="text-[11px] text-slate-300 font-medium pt-1 border-t border-slate-700/80 flex items-center gap-1.5">
+            <span>${leg.mode}</span>
+          </div>
+          <div class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 mt-1">
+            ⏱️ ${travelText}
+          </div>
+        </div>
+      `;
+      
+      L.popup({ 
+        autoPan: !isAutoOpen, 
+        offset: isAutoOpen ? [0, -15] : [0, 0] 
+      })
+      .setLatLng(latlng)
+      .setContent(popupContent)
+      .openOn(map);
+      
+      lucide.createIcons();
+    }
+
+    // Vigone Heart Marker (Only visible when zoomed out, zoom <= 7)
+    const vigoneLat = 44.8333;
+    const vigoneLng = 7.4667;
+    const vigoneIcon = L.divIcon({
+      className: 'custom-div-icon',
+      html: `<div class="pin-vigone-heart" title="Vigone (Torino) 🇮🇹">❤️</div>`,
+      iconSize: [36, 36], iconAnchor: [18, 18]
+    });
+    const vigoneMarker = L.marker([vigoneLat, vigoneLng], { icon: vigoneIcon });
+
+    function updateVigoneVisibility() {
+      const currentZoom = map.getZoom();
+      if (currentZoom <= 7) {
+        if (!map.hasLayer(vigoneMarker)) {
+          vigoneMarker.addTo(map);
+        }
+      } else {
+        if (map.hasLayer(vigoneMarker)) {
+          map.removeLayer(vigoneMarker);
+        }
+      }
+    }
+    map.on('zoomend', updateVigoneVisibility);
+
+    // Generate Itinerary Markers
+    stops.forEach((stop) => {
+      let pinClass = 'pin-bursa';
+      if (stop.tag === 'hub') pinClass = 'pin-hub';
+      else if (stop.phase === 'izmir') pinClass = 'pin-izmir';
+      else if (stop.phase === 'istanbul') pinClass = 'pin-istanbul';
+      
+      const customIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div id="pin-${stop.id}" class="pin-marker ${pinClass}">${stop.order}</div>`,
+        iconSize: [32, 32], iconAnchor: [16, 16]
+      });
+
+      const marker = L.marker([stop.lat, stop.lng], { icon: customIcon }).addTo(map);
+      marker.on('click', () => {
+        selectStop(stop.id);
+        if (window.innerWidth < 768 && mobileSubTab !== 'map') {
+          setMobileSubTab('map');
+        }
+      });
+    });
+
+    // Initial check for Vigone heart visibility
+    updateVigoneVisibility();
+
+    // Mobile View Sub-Tab Switcher
+    function setMobileSubTab(tab) {
+      mobileSubTab = tab;
+      const listAside = document.getElementById('sidebarMapList');
+      const mapContainer = document.getElementById('mapCanvasContainer');
+      const btnMap = document.getElementById('mobTabMap');
+      const btnList = document.getElementById('mobTabList');
+
+      if (tab === 'map') {
+        listAside.classList.add('hidden'); listAside.classList.remove('flex');
+        mapContainer.classList.remove('hidden'); mapContainer.classList.add('flex');
+        btnMap.className = "flex-1 py-1.5 rounded-md text-center transition bg-slate-800 text-white flex items-center justify-center gap-1.5";
+        btnList.className = "flex-1 py-1.5 rounded-md text-center transition text-slate-400 flex items-center justify-center gap-1.5";
+        setTimeout(() => map.invalidateSize(), 200);
+      } else {
+        mapContainer.classList.add('hidden'); mapContainer.classList.remove('flex');
+        listAside.classList.remove('hidden'); listAside.classList.add('flex');
+        btnList.className = "flex-1 py-1.5 rounded-md text-center transition bg-slate-800 text-white flex items-center justify-center gap-1.5";
+        btnMap.className = "flex-1 py-1.5 rounded-md text-center transition text-slate-400 flex items-center justify-center gap-1.5";
+      }
+    }
+
+    // View Switcher (Map vs Food vs Transport)
+    function switchMainView(view) {
+      currentMainView = view;
+      const mapCont = document.getElementById('viewMapContainer');
+      const listCont = document.getElementById('viewListContainer');
+      const transCont = document.getElementById('viewTransportContainer');
+      
+      const btnMap = document.getElementById('btnViewMap');
+      const btnList = document.getElementById('btnViewList');
+      const btnTrans = document.getElementById('btnViewTrans');
+
+      [btnMap, btnList, btnTrans].forEach(btn => {
+        btn.className = "view-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition shrink-0";
+      });
+
+      mapCont.classList.add('hidden');
+      listCont.classList.add('hidden');
+      transCont.classList.add('hidden');
+      transCont.classList.remove('flex');
+
+      if (view === 'map') {
+        mapCont.classList.remove('hidden');
+        btnMap.className = "view-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-sky-600 text-white transition shadow-sm shrink-0";
+        setTimeout(() => map.invalidateSize(), 200);
+      } else if (view === 'list') {
+        listCont.classList.remove('hidden');
+        btnList.className = "view-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-sky-600 text-white transition shadow-sm shrink-0";
+        renderListCatalog();
+      } else if (view === 'trans') {
+        transCont.classList.remove('hidden');
+        transCont.classList.add('flex');
+        btnTrans.className = "view-btn flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-sky-600 text-white transition shadow-sm shrink-0";
+      }
+    }
+
+    // Modal Control
+    function closeWelcomeModal() {
+      const modal = document.getElementById('welcomeModal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    // Toggle Language
+    function toggleLanguage() {
+      currentLang = (currentLang === 'it') ? 'en' : 'it';
+      updateUILanguage();
+      renderSidebar();
+      renderListCatalog();
+      if (selectedStopId) {
+        selectStop(selectedStopId, false);
+      }
+    }
+
+    function updateUILanguage() {
+      const t = uiTranslations[currentLang];
+      document.getElementById('navTitle').innerText = t.navTitle;
+      document.getElementById('navSub').innerText = t.navSub;
+      document.getElementById('langLabel').innerText = t.langLabel;
+      document.getElementById('labelViewMap').innerText = t.labelViewMap;
+      document.getElementById('labelViewList').innerText = t.labelViewList;
+      document.getElementById('labelViewTrans').innerText = t.labelViewTrans;
+      document.getElementById('lblMobMap').innerText = t.lblMobMap;
+      document.getElementById('lblMobList').innerText = t.lblMobList;
+      document.getElementById('tab-all').innerText = t.tabAll;
+      document.getElementById('tab-bursa').innerText = t.tabBursa;
+      document.getElementById('tab-izmir').innerText = t.tabIzmir;
+      document.getElementById('tab-istanbul').innerText = t.tabIstanbul;
+      document.getElementById('legendTitle').innerText = t.legendTitle;
+      document.getElementById('lblNextRoute').innerText = t.lblNextRoute;
+      document.getElementById('labelAbout').innerText = t.labelAbout;
+      document.getElementById('labelHighlight').innerHTML = `<i data-lucide="camera" class="w-3 h-3"></i> ${t.labelHighlight}`;
+      document.getElementById('labelFood').innerHTML = `<i data-lucide="utensils" class="w-3 h-3"></i> ${t.labelFood}`;
+      
+      document.getElementById('waTextMap').innerText = t.waTextMap;
+      document.getElementById('waTextList').innerText = t.waTextList;
+      document.getElementById('footerSuggestionNote').innerText = t.footerSuggestionNote;
+      document.getElementById('filterHeading').innerText = t.filterHeading;
+      document.getElementById('lblCatFilter').innerText = t.lblCatFilter;
+      document.getElementById('lblPriceFilter').innerText = t.lblPriceFilter;
+
+      document.getElementById('modalGreetingTitle').innerText = t.modalTitle;
+      document.getElementById('modalGreetingText').innerHTML = t.modalText;
+      document.getElementById('modalBtnStart').innerText = t.modalBtn;
+
+      document.getElementById('transTitle').innerText = t.transTitle;
+      document.getElementById('transDesc').innerText = t.transDesc;
+
+      document.getElementById('lblPrev').innerText = t.btnPrev;
+      document.getElementById('lblNext').innerText = t.btnNext;
+      
+      const catSelect = document.getElementById('filterCategory');
+      catSelect.options[0].text = t.optAllCats;
+      catSelect.options[1].text = t.optSavory;
+      catSelect.options[2].text = t.optSweet;
+      catSelect.options[3].text = t.optStreet;
+
+      const priceSelect = document.getElementById('filterPrice');
+      priceSelect.options[0].text = t.optAllPrices;
+      priceSelect.options[1].text = t.optLowPrice;
+      priceSelect.options[2].text = t.optMidPrice;
+      priceSelect.options[3].text = t.optHighPrice;
+
+      const waMsg = currentLang === 'it' 
+        ? "Ciao! Vorrei suggerire un posto o un piatto per il nostro viaggio in Turchia 🇹🇷" 
+        : "Hi! I would like to suggest a great place or dish for our Turkey trip 🇹🇷";
+      const waUrl = `https://wa.me/905511911693?text=${encodeURIComponent(waMsg)}`;
+      document.getElementById('waButtonMap').href = waUrl;
+      document.getElementById('waButtonList').href = waUrl;
+    }
+
+    // Render Sidebar Cards
+    function renderSidebar() {
+      const listEl = document.getElementById('stopsList');
+      listEl.innerHTML = '';
+
+      const filtered = stops.filter(s => activePhase === 'all' || s.phase === activePhase);
+
+      filtered.forEach(stop => {
+        const data = stop[currentLang];
+        let badgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
+        if (stop.phase === 'izmir') badgeColor = 'text-sky-400 bg-sky-500/10 border-sky-500/30';
+        else if (stop.phase === 'istanbul') badgeColor = 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+        
+        const card = document.createElement('div');
+        card.id = `card-${stop.id}`;
+        card.className = `p-2.5 sm:p-3 rounded-xl bg-slate-950/70 hover:bg-slate-800 border ${selectedStopId === stop.id ? 'ring-2 ring-sky-500 border-sky-500 bg-slate-800' : 'border-slate-800/80'} transition cursor-pointer group`;
+        card.onclick = () => {
+          selectStop(stop.id);
+          if (window.innerWidth < 768) {
+            setMobileSubTab('map');
+          }
+        };
+
+        card.innerHTML = `
+          <div class="flex items-start gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-700 group-hover:border-sky-400">${stop.order}</span>
+            <div class="flex-1 min-w-0">
+              <h4 class="text-xs sm:text-sm font-bold text-slate-200 group-hover:text-white leading-snug truncate">${data.title}</h4>
+              <p class="text-[11px] text-slate-400 mt-0.5 line-clamp-1">${data.sub}</p>
+            </div>
+          </div>
+          <div class="mt-2 flex items-center justify-between">
+            <span class="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${badgeColor}">
+              ${stop.phase.toUpperCase()}
+            </span>
+            <span class="text-[11px] text-sky-400 font-medium flex items-center gap-1">
+              ${currentLang === 'it' ? 'Dettagli' : 'Details'} <i data-lucide="chevron-right" class="w-3 h-3"></i>
+            </span>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    // Render List Catalog Grid
+    function renderListCatalog() {
+      const grid = document.getElementById('catalogGrid');
+      grid.innerHTML = '';
+
+      const selectedCat = document.getElementById('filterCategory').value;
+      const selectedPrice = document.getElementById('filterPrice').value;
+
+      const filtered = catalogItems.filter(item => {
+        const matchesCat = (selectedCat === 'all' || item.category === selectedCat);
+        const matchesPrice = (selectedPrice === 'all' || item.price === selectedPrice);
+        return matchesCat && matchesPrice;
+      });
+
+      document.getElementById('listCounter').innerText = `${currentLang === 'it' ? 'Mostrati' : 'Showing'}: ${filtered.length}`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-400">
+            <i data-lucide="utensils-crossed" class="w-8 h-8 mx-auto mb-2 text-slate-600"></i>
+            <p class="text-sm">${currentLang === 'it' ? 'Nessun piatto corrisponde a questi filtri.' : 'No dishes match your filters.'}</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      filtered.forEach(item => {
+        const data = item[currentLang];
+        const t = uiTranslations[currentLang];
+
+        let catIcon = "utensils";
+        if (item.category === "sweet") catIcon = "cake";
+        if (item.category === "street") catIcon = "sandwich";
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col hover:border-slate-700 transition shadow-lg group";
+
+        card.innerHTML = `
+          <div class="relative h-40 sm:h-44 w-full bg-slate-950 overflow-hidden cursor-pointer" ondblclick="openLightbox('${item.image}', '${data.title}')">
+            <img src="${item.image}" alt="${data.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMKlGBQzX9cf6OiqUHDOVo9zAe5OpXDZhHGO5OtmckPw&s=10'" />
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+            
+            <div class="absolute top-2.5 right-2.5 flex items-center">
+              <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg bg-slate-900/90 text-amber-400 border border-amber-500/40 shadow font-mono">
+                ${item.price}
+              </span>
+            </div>
+            <div class="absolute bottom-2 left-2 bg-slate-900/80 px-2 py-0.5 rounded text-[9px] text-slate-300 pointer-events-none opacity-0 group-hover:opacity-100 transition">
+              Doppio clic per ingrandire
+            </div>
+          </div>
+
+          <div class="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-2.5">
+            <div>
+              <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+                <i data-lucide="${catIcon}" class="w-3 h-3 text-sky-400"></i> ${data.badge}
+              </span>
+              <h3 class="text-xs sm:text-sm font-bold text-white group-hover:text-sky-400 transition leading-snug">${data.title}</h3>
+              <p class="text-xs text-slate-300 mt-1 leading-relaxed">${data.desc}</p>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800/80 text-[11px] bg-slate-950/50 -mx-3.5 -mb-3.5 sm:-mx-4 sm:-mb-4 p-2.5 sm:p-3 mt-1">
+              <span class="text-slate-400 block font-medium">${t.whereToTry}:</span>
+              <span class="text-sky-300 font-semibold leading-tight block mt-0.5">${data.spot}</span>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    // Map Select Stop with Auto-Opening Next-Leg Info & Highlighting
+    function selectStop(id, shouldFly = true) {
+      selectedStopId = id;
+      const stop = stops.find(s => s.id === id);
+      if (!stop) return;
+
+      const data = stop[currentLang];
+      const stopIndex = stops.findIndex(s => s.id === id);
+
+      map.closePopup();
+
+      if (shouldFly) {
+        if (window.innerWidth < 768) {
+          // On mobile, fly to the stop and pan slightly upward so the pin appears above the bottom card
+          map.flyTo([stop.lat, stop.lng], 13, { duration: 1.2 });
+          setTimeout(() => {
+            map.panBy([0, 90], { animate: true, duration: 0.4 });
+          }, 1100);
+        } else {
+          map.flyTo([stop.lat, stop.lng], 13, { duration: 1.2 });
+        }
+      }
+
+      polylineSegments.forEach(seg => {
+        if (seg.fromOrder === stop.order) {
+          seg.line.setStyle({ color: '#10b981', weight: 5.5, opacity: 1 });
+          seg.line.bringToFront();
+          seg.hitLine.bringToFront();
+          
+          setTimeout(() => {
+            if (selectedStopId === id) {
+               openLegPopup(seg.stopsIndex, [stop.lat, stop.lng], true);
+            }
+          }, shouldFly ? 1250 : 50);
+
+        } else {
+          seg.line.setStyle({ color: '#0ea5e9', weight: 3.5, opacity: 0.85 });
+        }
+      });
+
+      document.querySelectorAll('#stopsList > div').forEach(el => el.classList.remove('ring-2', 'ring-sky-500', 'bg-slate-800'));
+      const activeCard = document.getElementById(`card-${id}`);
+      if (activeCard) {
+        activeCard.classList.add('ring-2', 'ring-sky-500', 'bg-slate-800');
+        activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      document.querySelectorAll('.pin-marker').forEach(el => el.classList.remove('active-pin'));
+      const pinEl = document.getElementById(`pin-${id}`);
+      if (pinEl) pinEl.classList.add('active-pin');
+
+      const drawer = document.getElementById('detailDrawer');
+      document.getElementById('drawerImage').src = stop.image;
+      document.getElementById('drawerBadge').innerText = `${stop.phase.toUpperCase()} • TAPPA ${stop.order}`;
+      document.getElementById('drawerTitle').innerText = data.title;
+      document.getElementById('drawerDesc').innerText = data.desc;
+      document.getElementById('drawerYoungTip').innerText = data.young;
+      document.getElementById('drawerFoodTip').innerText = data.food;
+      
+      const btnPrev = document.getElementById('btnPrevStop');
+      const btnNext = document.getElementById('btnNextStop');
+      btnPrev.disabled = (stopIndex === 0);
+      btnNext.disabled = (stopIndex === stops.length - 1);
+
+      drawer.classList.remove('translate-y-full', 'md:translate-y-8', 'opacity-0', 'pointer-events-none');
+      drawer.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+
+      lucide.createIcons();
+    }
+
+    function navStop(direction) {
+      if (!selectedStopId) return;
+      const currentIndex = stops.findIndex(s => s.id === selectedStopId);
+      if (currentIndex === -1) return;
+
+      const nextIndex = currentIndex + direction;
+      if (nextIndex >= 0 && nextIndex < stops.length) {
+        selectStop(stops[nextIndex].id, true);
+      }
+    }
+
+    function closeDrawer() {
+      selectedStopId = null;
+      const drawer = document.getElementById('detailDrawer');
+      drawer.classList.add('translate-y-full', 'md:translate-y-8', 'opacity-0', 'pointer-events-none');
+      drawer.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+      document.querySelectorAll('#stopsList > div').forEach(el => el.classList.remove('ring-2', 'ring-sky-500', 'bg-slate-800'));
+      document.querySelectorAll('.pin-marker').forEach(el => el.classList.remove('active-pin'));
+      
+      map.closePopup();
+
+      polylineSegments.forEach(seg => {
+        seg.line.setStyle({ color: '#0ea5e9', weight: 3.5, opacity: 0.9 });
+      });
+    }
+
+    function setPhase(phase) {
+      activePhase = phase;
+      document.querySelectorAll('.phase-tab').forEach(t => {
+        t.classList.remove('bg-slate-800', 'text-white');
+        t.classList.add('text-slate-400');
+      });
+      document.getElementById(`tab-${phase}`).classList.add('bg-slate-800', 'text-white');
+      document.getElementById(`tab-${phase}`).classList.remove('text-slate-400');
+
+      renderSidebar();
+      closeDrawer();
+
+      if (phase === 'bursa') {
+        map.flyTo([40.18, 29.10], 10);
+      } else if (phase === 'izmir') {
+        map.flyTo([38.15, 27.35], 9);
+      } else if (phase === 'istanbul') {
+        map.flyTo([41.015, 28.975], 13);
+      } else {
+        map.flyTo([39.0, 35.0], 6);
+      }
+    }
+
+    // Init App
+    updateUILanguage();
+    renderSidebar();
+    renderListCatalog();
+    lucide.createIcons();
+  </script>
+</body>
+</html>
